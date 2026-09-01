@@ -1,0 +1,882 @@
+<div>
+  <h1>Digital Forensics Lab 2: Evidence Examination, Recovery, and Artifact Analysis</h1>
+
+  <p><strong>Course:</strong> CYBR 2800<br>
+  <strong>Lab:</strong> 2 of 3<br>
+  <strong>Estimated Time:</strong> 3–5 hours<br>
+  <strong>Points:</strong> 100</p>
+
+  <aside aria-label="Lab purpose">
+    <h2>Lab Purpose</h2>
+    <p>
+      In this lab, you will continue the forensic investigation from Lab 1. You will
+      examine a preserved forensic disk image, identify files and directories, investigate
+      deleted files, recover evidence, examine metadata, analyze user activity, and begin
+      correlating evidence to determine what happened.
+    </p>
+  </aside>
+
+  <h2>Learning Objectives</h2>
+
+  <p>By completing this lab, you should be able to:</p>
+
+  <ul>
+    <li>Verify the integrity of a forensic evidence image.</li>
+    <li>Work from a forensic copy without modifying the original evidence.</li>
+    <li>Identify the partition and file-system structure of a forensic image.</li>
+    <li>Use The Sleuth Kit command-line tools to examine files and directories.</li>
+    <li>Identify deleted files and recover deleted evidence.</li>
+    <li>Use file metadata to identify important forensic information.</li>
+    <li>Analyze user activity and system artifacts.</li>
+    <li>Search recovered evidence for relevant keywords and indicators.</li>
+    <li>Document evidence using hashes, screenshots, notes, and command output.</li>
+    <li>Begin developing an evidence-based explanation of the incident.</li>
+  </ul>
+
+  <h2>Scenario</h2>
+
+  <p>
+    You are continuing an investigation involving a workstation used by an employee
+    named <strong>Alex</strong>. During the initial evidence-preservation process,
+    a forensic disk image was created.
+  </p>
+
+  <p>
+    Your task in this lab is to examine the preserved image and determine whether
+    there are indicators of suspicious activity.
+  </p>
+
+  <p>
+    You are specifically interested in:
+  </p>
+
+  <ul>
+    <li>Authentication activity</li>
+    <li>Remote connections</li>
+    <li>Command-line activity</li>
+    <li>Potentially suspicious scripts</li>
+    <li>Deleted files</li>
+    <li>Potentially exposed credentials</li>
+    <li>Connections to internal systems</li>
+    <li>Evidence that can help establish a timeline</li>
+  </ul>
+
+  <aside aria-label="Important forensic rule">
+    <h2>Important: Protect the Evidence</h2>
+    <p>
+      <strong>Never modify the original forensic image.</strong>
+    </p>
+    <p>
+      You must create a working copy and perform your analysis against the working
+      copy. Your original evidence image must remain unchanged.
+    </p>
+  </aside>
+
+  <h2>Required Environment</h2>
+
+  <p>You will need:</p>
+
+  <ul>
+    <li>An Ubuntu forensic-analysis VM.</li>
+    <li>The instructor-provided <code>CYBR2800_Lab2_Evidence.dd</code> image.</li>
+    <li>The SHA-256 hash provided with the evidence image.</li>
+    <li>Terminal access.</li>
+    <li>The Sleuth Kit.</li>
+    <li>Standard Linux command-line utilities.</li>
+  </ul>
+
+  <p>
+    You may use UTM, VMware, VirtualBox, or a cloud-based Ubuntu VM. If you use a
+    cloud VM, you are responsible for any cloud charges. UVU will not pay for
+    cloud infrastructure or storage costs associated with this assignment.
+  </p>
+
+  <h2>Required Tools</h2>
+
+  <p>Verify that the following tools are available:</p>
+
+  <table>
+    <caption>Forensic tools used in this lab</caption>
+    <thead>
+      <tr>
+        <th scope="col">Tool</th>
+        <th scope="col">Purpose</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>sha256sum</code></td>
+        <td>Verify evidence integrity.</td>
+      </tr>
+      <tr>
+        <td><code>img_stat</code></td>
+        <td>Display forensic image information.</td>
+      </tr>
+      <tr>
+        <td><code>mmls</code></td>
+        <td>Identify partitions and partition offsets.</td>
+      </tr>
+      <tr>
+        <td><code>fsstat</code></td>
+        <td>Display file-system information.</td>
+      </tr>
+      <tr>
+        <td><code>fls</code></td>
+        <td>List files and directories, including deleted entries.</td>
+      </tr>
+      <tr>
+        <td><code>istat</code></td>
+        <td>Examine file metadata.</td>
+      </tr>
+      <tr>
+        <td><code>icat</code></td>
+        <td>Extract file contents from the image.</td>
+      </tr>
+      <tr>
+        <td><code>tsk_recover</code></td>
+        <td>Recover files from the forensic image.</td>
+      </tr>
+      <tr>
+        <td><code>strings</code></td>
+        <td>Search binary data for readable text.</td>
+      </tr>
+      <tr>
+        <td><code>grep</code></td>
+        <td>Search text for relevant indicators.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Part 1: Prepare Your Forensic Workspace</h2>
+
+  <p>Create a dedicated directory for this investigation:</p>
+
+  <pre><code>mkdir -p ~/CYBR2800_Lab2/{evidence,working,recovered,output,screenshots,notes}</code></pre>
+
+  <p>Move or copy your instructor-provided image into the <code>evidence</code> directory.</p>
+
+  <pre><code>cp /path/to/CYBR2800_Lab2_Evidence.dd ~/CYBR2800_Lab2/evidence/</code></pre>
+
+  <p>Change to your investigation directory:</p>
+
+  <pre><code>cd ~/CYBR2800_Lab2</code></pre>
+
+  <h2>Part 2: Verify the Evidence Hash</h2>
+
+  <p>
+    Before beginning your examination, calculate the SHA-256 hash of the evidence
+    image.
+  </p>
+
+  <pre><code>sha256sum evidence/CYBR2800_Lab2_Evidence.dd</code></pre>
+
+  <p>
+    Compare the resulting hash with the SHA-256 value provided by your instructor.
+  </p>
+
+  <p>Record the result:</p>
+
+  <pre><code>sha256sum evidence/CYBR2800_Lab2_Evidence.dd &gt; output/original_hash.txt</code></pre>
+
+  <h3>Evidence Requirement</h3>
+
+  <p>
+    Your report must explain whether the calculated hash matches the instructor's
+    original hash.
+  </p>
+
+  <h2>Part 3: Create a Working Copy</h2>
+
+  <p>
+    Do not perform your investigation directly against the original evidence file.
+    Create a working copy.
+  </p>
+
+  <pre><code>cp evidence/CYBR2800_Lab2_Evidence.dd working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>Calculate the hash of the working copy:</p>
+
+  <pre><code>sha256sum working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>
+    The working copy should initially have the same SHA-256 hash as the original.
+  </p>
+
+  <pre><code>sha256sum working/CYBR2800_Lab2_Working.dd &gt; output/working_hash.txt</code></pre>
+
+  <aside aria-label="Forensic principle">
+    <h3>Why Do We Hash the Working Copy?</h3>
+    <p>
+      Hashing allows you to demonstrate that the working copy initially matched the
+      evidence you received. This is an important part of documenting evidence
+      integrity.
+    </p>
+  </aside>
+
+  <h2>Part 4: Examine the Forensic Image</h2>
+
+  <p>Use <code>img_stat</code> to examine the image:</p>
+
+  <pre><code>img_stat working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>Save the output:</p>
+
+  <pre><code>img_stat working/CYBR2800_Lab2_Working.dd &gt; output/img_stat.txt</code></pre>
+
+  <p>Identify and record:</p>
+
+  <ul>
+    <li>Image type</li>
+    <li>Image size</li>
+    <li>Sector size, if displayed</li>
+    <li>Other relevant image information</li>
+  </ul>
+
+  <h2>Part 5: Identify the Partition Structure</h2>
+
+  <p>Run:</p>
+
+  <pre><code>mmls working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>Save the results:</p>
+
+  <pre><code>mmls working/CYBR2800_Lab2_Working.dd &gt; output/mmls.txt</code></pre>
+
+  <p>
+    Identify the partition containing the file system you need to analyze.
+    Record the <strong>Start</strong> sector for that partition.
+  </p>
+
+  <p>
+    You will use this value as the <code>-o</code> offset in later Sleuth Kit commands.
+  </p>
+
+  <aside aria-label="Offset warning">
+    <h3>Important</h3>
+    <p>
+      Do not blindly copy an offset from another student's work. Use the partition
+      information displayed by <code>mmls</code> on your own evidence image.
+    </p>
+  </aside>
+
+  <h2>Part 6: Examine the File System</h2>
+
+  <p>
+    Replace <code>OFFSET</code> below with the partition start sector identified
+    with <code>mmls</code>.
+  </p>
+
+  <pre><code>fsstat -o OFFSET working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>Save the results:</p>
+
+  <pre><code>fsstat -o OFFSET working/CYBR2800_Lab2_Working.dd &gt; output/fsstat.txt</code></pre>
+
+  <p>Identify:</p>
+
+  <ul>
+    <li>File-system type</li>
+    <li>Block or cluster information</li>
+    <li>Inode or metadata information</li>
+    <li>File-system creation information, if available</li>
+    <li>Other information relevant to your investigation</li>
+  </ul>
+
+  <h2>Part 7: List Files and Directories</h2>
+
+  <p>
+    Use <code>fls</code> to examine the directory structure.
+  </p>
+
+  <pre><code>fls -o OFFSET working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>
+    Now perform a recursive listing:
+  </p>
+
+  <pre><code>fls -r -o OFFSET working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>Save the complete listing:</p>
+
+  <pre><code>fls -r -o OFFSET working/CYBR2800_Lab2_Working.dd &gt; output/file_listing.txt</code></pre>
+
+  <p>
+    Review the listing and identify files that may be relevant to the investigation.
+  </p>
+
+  <h2>Part 8: Investigate Deleted Files</h2>
+
+  <p>
+    Deleted files are particularly important in digital forensics because users may
+    attempt to remove evidence by deleting files.
+  </p>
+
+  <p>Use:</p>
+
+  <pre><code>fls -r -d -o OFFSET working/CYBR2800_Lab2_Working.dd</code></pre>
+
+  <p>Save the results:</p>
+
+  <pre><code>fls -r -d -o OFFSET working/CYBR2800_Lab2_Working.dd &gt; output/deleted_files.txt</code></pre>
+
+  <p>
+    Carefully review the output and identify the deleted files associated with the
+    investigation.
+  </p>
+
+  <h3>Questions</h3>
+
+  <ol>
+    <li>How many deleted files did you identify?</li>
+    <li>What are their names?</li>
+    <li>Where were the files located?</li>
+    <li>Which deleted file appears most relevant to the investigation?</li>
+    <li>Why could deleted files be important evidence?</li>
+  </ol>
+
+  <h2>Part 9: Examine File Metadata</h2>
+
+  <p>
+    Once you identify a potentially important file, use <code>istat</code> to examine
+    its metadata.
+  </p>
+
+  <p>
+    The output from <code>fls</code> will provide a metadata address for the file.
+    Use that address with <code>istat</code>.
+  </p>
+
+  <pre><code>istat -o OFFSET working/CYBR2800_Lab2_Working.dd META_ADDRESS</code></pre>
+
+  <p>Save the output:</p>
+
+  <pre><code>istat -o OFFSET working/CYBR2800_Lab2_Working.dd META_ADDRESS &gt; output/important_file_istat.txt</code></pre>
+
+  <p>Look for information such as:</p>
+
+  <ul>
+    <li>File type</li>
+    <li>File size</li>
+    <li>Metadata address</li>
+    <li>Creation or change information, when available</li>
+    <li>Modification time</li>
+    <li>Access time</li>
+    <li>Deletion information</li>
+    <li>Data blocks associated with the file</li>
+  </ul>
+
+  <h2>Part 10: Recover a Deleted File with <code>icat</code></h2>
+
+  <p>
+    Select one deleted file that is relevant to the investigation.
+  </p>
+
+  <p>
+    Use <code>icat</code> to recover its contents.
+  </p>
+
+  <pre><code>icat -o OFFSET working/CYBR2800_Lab2_Working.dd META_ADDRESS &gt; recovered/recovered_file.txt</code></pre>
+
+  <p>Examine the recovered file:</p>
+
+  <pre><code>cat recovered/recovered_file.txt</code></pre>
+
+  <p>Calculate its SHA-256 hash:</p>
+
+  <pre><code>sha256sum recovered/recovered_file.txt</code></pre>
+
+  <p>Save the hash:</p>
+
+  <pre><code>sha256sum recovered/recovered_file.txt &gt; output/recovered_file_hash.txt</code></pre>
+
+  <h3>Evidence Documentation</h3>
+
+  <p>Document:</p>
+
+  <ul>
+    <li>Original file name</li>
+    <li>Original location</li>
+    <li>Metadata address</li>
+    <li>Recovery method</li>
+    <li>Recovered file name</li>
+    <li>SHA-256 hash</li>
+    <li>Important information discovered inside the file</li>
+  </ul>
+
+  <h2>Part 11: Recover Files Automatically</h2>
+
+  <p>
+    Use <code>tsk_recover</code> to recover files from the evidence image.
+  </p>
+
+  <pre><code>mkdir -p recovered/tsk_recover</code></pre>
+
+  <pre><code>tsk_recover -o OFFSET working/CYBR2800_Lab2_Working.dd recovered/tsk_recover</code></pre>
+
+  <p>
+    Review the recovered directory:
+  </p>
+
+  <pre><code>find recovered/tsk_recover -type f</code></pre>
+
+  <p>
+    Search the recovered files:
+  </p>
+
+  <pre><code>grep -Rni "backup" recovered/tsk_recover</code></pre>
+
+  <p>You should also search for:</p>
+
+  <pre><code>grep -Rni "password" recovered/tsk_recover
+grep -Rni "10.10.20.25" recovered/tsk_recover
+grep -Rni "10.10.20.55" recovered/tsk_recover
+grep -Rni "ssh" recovered/tsk_recover</code></pre>
+
+  <aside aria-label="Investigation reminder">
+    <h3>Do Not Assume Every Result Is Malicious</h3>
+    <p>
+      A forensic analyst must distinguish between evidence and conclusions.
+      A suspicious-looking command, IP address, or file does not automatically prove
+      malicious activity.
+    </p>
+    <p>
+      Your conclusions should be supported by multiple pieces of evidence whenever
+      possible.
+    </p>
+  </aside>
+
+  <h2>Part 12: Analyze User Activity</h2>
+
+  <p>
+    Review the recovered files for evidence of user activity.
+  </p>
+
+  <p>Pay particular attention to:</p>
+
+  <ul>
+    <li><code>.bash_history</code></li>
+    <li><code>.browser_history.txt</code></li>
+    <li><code>.ssh/config</code></li>
+    <li>Documents</li>
+    <li>Scripts</li>
+    <li>Authentication logs</li>
+    <li>Network activity logs</li>
+  </ul>
+
+  <p>Search for commands involving SSH:</p>
+
+  <pre><code>grep -Rni "ssh" recovered/tsk_recover</code></pre>
+
+  <p>Search for network addresses:</p>
+
+  <pre><code>grep -Rni "10.10.20." recovered/tsk_recover</code></pre>
+
+  <p>Search for potentially relevant tools:</p>
+
+  <pre><code>grep -RniE "curl|wget|scp|nc|netcat" recovered/tsk_recover</code></pre>
+
+  <h3>Investigation Questions</h3>
+
+  <ol>
+    <li>Which user appears to have performed the activity?</li>
+    <li>Which systems were accessed?</li>
+    <li>Which IP addresses appear repeatedly?</li>
+    <li>Were there failed authentication attempts?</li>
+    <li>Were there successful authentication attempts?</li>
+    <li>What commands were executed?</li>
+    <li>What files appear to be associated with the activity?</li>
+  </ol>
+
+  <h2>Part 13: Analyze the Suspicious Script</h2>
+
+  <p>
+    Locate the <code>maintenance.sh</code> file in the evidence.
+  </p>
+
+  <p>Display its contents:</p>
+
+  <pre><code>cat recovered/tsk_recover/home/alex/Documents/maintenance.sh</code></pre>
+
+  <p>
+    If the recovered directory structure differs, use <code>find</code> to locate it:
+  </p>
+
+  <pre><code>find recovered/tsk_recover -name "maintenance.sh" -print</code></pre>
+
+  <p>Analyze the script and answer:</p>
+
+  <ol>
+    <li>What does the script attempt to do?</li>
+    <li>What remote IP address does it reference?</li>
+    <li>What tools or commands does it use?</li>
+    <li>Does it download another file?</li>
+    <li>Where would the downloaded file be stored?</li>
+    <li>What evidence would you want to investigate next?</li>
+  </ol>
+
+  <h2>Part 14: Search for Indicators</h2>
+
+  <p>
+    Conduct a broader search of the recovered evidence.
+  </p>
+
+  <p>Search for the suspicious IP address:</p>
+
+  <pre><code>grep -Rni "10.10.20.55" recovered/tsk_recover</code></pre>
+
+  <p>Search for the backup server:</p>
+
+  <pre><code>grep -Rni "10.10.20.25" recovered/tsk_recover</code></pre>
+
+  <p>Search for credential-related information:</p>
+
+  <pre><code>grep -RniE "password|credential|username|login" recovered/tsk_recover</code></pre>
+
+  <p>
+    Document the files that produced relevant results.
+  </p>
+
+  <h2>Part 15: Examine File Metadata Using Linux Tools</h2>
+
+  <p>
+    For recovered files that are available in the normal Linux file system, you may
+    also use the <code>stat</code> command.
+  </p>
+
+  <pre><code>stat recovered/tsk_recover/home/alex/Documents/maintenance.sh</code></pre>
+
+  <p>
+    Compare the information returned by <code>stat</code> with the forensic metadata
+    returned by <code>istat</code>.
+  </p>
+
+  <h3>Question</h3>
+
+  <p>
+    What is the difference between examining a recovered file using normal operating
+    system tools and examining the original file-system metadata using a forensic
+    tool such as <code>istat</code>?
+  </p>
+
+  <h2>Part 16: Create an Investigation Notes File</h2>
+
+  <p>Create:</p>
+
+  <pre><code>nano notes/investigation_notes.md</code></pre>
+
+  <p>Your notes should contain:</p>
+
+  <ul>
+    <li>Date and time of your investigation</li>
+    <li>Evidence image name</li>
+    <li>Original SHA-256 hash</li>
+    <li>Working-copy SHA-256 hash</li>
+    <li>Partition offset</li>
+    <li>File-system type</li>
+    <li>Important files discovered</li>
+    <li>Deleted files discovered</li>
+    <li>Recovered files</li>
+    <li>Important IP addresses</li>
+    <li>Important commands</li>
+    <li>Initial interpretation of the evidence</li>
+    <li>Questions that require additional investigation</li>
+  </ul>
+
+  <h2>Part 17: Create an Evidence Table</h2>
+
+  <p>
+    Create a table in your report using the following structure.
+  </p>
+
+  <table>
+    <caption>Required evidence documentation structure</caption>
+    <thead>
+      <tr>
+        <th scope="col">Evidence ID</th>
+        <th scope="col">Evidence</th>
+        <th scope="col">Location</th>
+        <th scope="col">Why Important?</th>
+        <th scope="col">Hash</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>E-001</td>
+        <td>Example file</td>
+        <td>Evidence path</td>
+        <td>Explain relevance</td>
+        <td>SHA-256</td>
+      </tr>
+      <tr>
+        <td>E-002</td>
+        <td>Example file</td>
+        <td>Evidence path</td>
+        <td>Explain relevance</td>
+        <td>SHA-256</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    You should document at least <strong>five pieces of evidence</strong>.
+  </p>
+
+  <h2>Part 18: Required Screenshots</h2>
+
+  <p>
+    Screenshots must demonstrate your work. Do not submit screenshots without
+    explanations.
+  </p>
+
+  <p>Include at least:</p>
+
+  <ol>
+    <li>Evidence SHA-256 verification</li>
+    <li><code>img_stat</code> output</li>
+    <li><code>mmls</code> output</li>
+    <li><code>fsstat</code> output</li>
+    <li>Recursive <code>fls</code> output</li>
+    <li>Deleted-file discovery</li>
+    <li><code>istat</code> analysis</li>
+    <li>Recovered deleted file</li>
+    <li>Recovered evidence directory</li>
+    <li>Relevant search results</li>
+  </ol>
+
+  <aside aria-label="Accessibility requirement for screenshots">
+    <h3>Accessibility Requirement</h3>
+    <p>
+      Do not use screenshots as the only way to communicate important information.
+      Every screenshot in your report must have a descriptive caption explaining
+      what the reader should notice.
+    </p>
+    <p>
+      Your written report must contain the important results in text so that a
+      screen reader user can understand your findings without viewing the image.
+    </p>
+  </aside>
+
+  <h2>Part 19: Investigation Questions</h2>
+
+  <p>
+    Based only on the evidence you discovered, answer the following questions.
+    Support your answers with specific evidence.
+  </p>
+
+  <ol>
+    <li>
+      What user appears to be associated with the workstation activity?
+    </li>
+    <li>
+      What IP addresses are associated with the activity?
+    </li>
+    <li>
+      What evidence suggests that remote access occurred?
+    </li>
+    <li>
+      What evidence suggests that authentication attempts occurred?
+    </li>
+    <li>
+      What deleted files were recovered?
+    </li>
+    <li>
+      What information did the deleted files contain?
+    </li>
+    <li>
+      What does <code>maintenance.sh</code> do?
+    </li>
+    <li>
+      Which evidence appears most significant to the investigation?
+    </li>
+    <li>
+      Are you able to determine whether the activity was malicious?
+      Explain your reasoning.
+    </li>
+    <li>
+      What additional evidence would you request if this were a real investigation?
+    </li>
+  </ol>
+
+  <h2>Part 20: Write Your Preliminary Findings</h2>
+
+  <p>
+    Write a preliminary investigation summary of approximately
+    <strong>500–750 words</strong>.
+  </p>
+
+  <p>Your summary should include:</p>
+
+  <ul>
+    <li>What you investigated</li>
+    <li>How the evidence was preserved</li>
+    <li>How you verified the evidence</li>
+    <li>Important artifacts discovered</li>
+    <li>Deleted files recovered</li>
+    <li>Important user activity</li>
+    <li>Important network indicators</li>
+    <li>Your current interpretation</li>
+    <li>Limitations of your investigation</li>
+    <li>Recommended next steps</li>
+  </ul>
+
+  <aside aria-label="Professional forensic writing guidance">
+    <h3>Professional Writing Guidance</h3>
+    <p>
+      Avoid statements such as "Alex definitely hacked the server" unless the evidence
+      proves that conclusion.
+    </p>
+    <p>
+      Instead, describe what the evidence demonstrates. For example:
+      <em>"The evidence indicates that an SSH connection was established from
+      10.10.20.10 to 10.10.20.25 during the documented time period."</em>
+    </p>
+    <p>
+      Separate <strong>observations</strong> from <strong>interpretations</strong>.
+    </p>
+  </aside>
+
+  <h2>Required Submission Structure</h2>
+
+  <p>Organize your submission using the following structure:</p>
+
+  <pre><code>LastName_Forensics_Lab2/
+├── report/
+│   └── forensic_report.pdf
+├── hashes/
+│   ├── original_hash.txt
+│   ├── working_hash.txt
+│   └── recovered_file_hash.txt
+├── output/
+│   ├── img_stat.txt
+│   ├── mmls.txt
+│   ├── fsstat.txt
+│   ├── file_listing.txt
+│   ├── deleted_files.txt
+│   └── important_file_istat.txt
+├── recovered/
+│   ├── recovered_file.txt
+│   └── tsk_recover/
+├── screenshots/
+│   ├── screenshot01_hash.png
+│   ├── screenshot02_imgstat.png
+│   ├── screenshot03_mmls.png
+│   ├── screenshot04_fsstat.png
+│   ├── screenshot05_files.png
+│   ├── screenshot06_deleted.png
+│   ├── screenshot07_istat.png
+│   ├── screenshot08_recovered.png
+│   └── screenshot09_search.png
+└── notes/
+    └── investigation_notes.md</code></pre>
+
+  <h2>Submission Checklist</h2>
+
+  <p>Before submitting, verify that you have:</p>
+
+  <ul>
+    <li>Verified the original evidence hash.</li>
+    <li>Created a working copy.</li>
+    <li>Verified the working-copy hash.</li>
+    <li>Identified the partition offset.</li>
+    <li>Identified the file-system type.</li>
+    <li>Created a recursive file listing.</li>
+    <li>Identified deleted files.</li>
+    <li>Recovered at least one deleted file.</li>
+    <li>Analyzed metadata using <code>istat</code>.</li>
+    <li>Recovered files using <code>tsk_recover</code>.</li>
+    <li>Searched recovered evidence for indicators.</li>
+    <li>Documented at least five pieces of evidence.</li>
+    <li>Calculated hashes for recovered evidence.</li>
+    <li>Included required screenshots.</li>
+    <li>Included written explanations for your screenshots.</li>
+    <li>Completed the investigation questions.</li>
+    <li>Completed the preliminary findings report.</li>
+  </ul>
+
+  <h2>Grading Rubric</h2>
+
+  <table>
+    <caption>Digital Forensics Lab 2 grading rubric</caption>
+    <thead>
+      <tr>
+        <th scope="col">Category</th>
+        <th scope="col">Points</th>
+        <th scope="col">Requirements</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Evidence Integrity</td>
+        <td>10</td>
+        <td>Correctly verifies original and working-copy hashes.</td>
+      </tr>
+      <tr>
+        <td>Image and Partition Analysis</td>
+        <td>10</td>
+        <td>Correct use of <code>img_stat</code> and <code>mmls</code>.</td>
+      </tr>
+      <tr>
+        <td>File-System Analysis</td>
+        <td>10</td>
+        <td>Correct use of <code>fsstat</code> and <code>fls</code>.</td>
+      </tr>
+      <tr>
+        <td>Deleted-File Investigation</td>
+        <td>15</td>
+        <td>Identifies and investigates deleted files.</td>
+      </tr>
+      <tr>
+        <td>Evidence Recovery</td>
+        <td>15</td>
+        <td>Successfully recovers and documents relevant evidence.</td>
+      </tr>
+      <tr>
+        <td>Metadata Analysis</td>
+        <td>10</td>
+        <td>Uses <code>istat</code> and interprets metadata appropriately.</td>
+      </tr>
+      <tr>
+        <td>Artifact Analysis</td>
+        <td>10</td>
+        <td>Analyzes user, authentication, network, and script artifacts.</td>
+      </tr>
+      <tr>
+        <td>Evidence Documentation</td>
+        <td>10</td>
+        <td>Documents at least five pieces of evidence with hashes and explanations.</td>
+      </tr>
+      <tr>
+        <td>Report and Findings</td>
+        <td>10</td>
+        <td>Provides a clear, evidence-based preliminary investigation report.</td>
+      </tr>
+      <tr>
+        <th scope="row">Total</th>
+        <th>100</th>
+        <th></th>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Important Forensic Principle</h2>
+
+  <p>
+    Digital forensics is not simply about finding something suspicious. Your job is
+    to establish what the evidence actually shows, preserve that evidence, document
+    your methodology, and clearly distinguish facts from assumptions.
+  </p>
+
+  <p>
+    In the next lab, you will use the artifacts discovered here to build a timeline,
+    correlate multiple pieces of evidence, determine what most likely occurred, and
+    produce a professional forensic investigation report.
+  </p>
+
+  <aside aria-label="Lab completion">
+    <h2>Lab 2 Complete</h2>
+    <p>
+      Make sure your evidence, hashes, recovered files, screenshots, notes, and report
+      are organized before submitting your assignment.
+    </p>
+  </aside>
+</div>

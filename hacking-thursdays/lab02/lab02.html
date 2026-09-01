@@ -1,0 +1,1107 @@
+<div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #222; max-width: 1000px; margin: 0 auto;">
+
+  <h1>Digital Forensics Lab 1: Evidence Acquisition and Preservation</h1>
+
+  <p>
+    <strong>Course:</strong> CYBR 2800<br>
+    <strong>Lab:</strong> 1 of 3<br>
+    <strong>Estimated Time:</strong> 3–5 hours<br>
+    <strong>Points:</strong> 100
+  </p>
+
+  <hr>
+
+  <h2>Lab Overview</h2>
+
+  <p>
+    In this lab, you will begin working as a <strong>Junior Digital Forensics Analyst</strong>.
+    You will learn how forensic investigators acquire, preserve, verify, and begin analyzing
+    digital evidence using open-source command-line tools.
+  </p>
+
+  <p>
+    This lab is designed around the terminal rather than graphical forensic applications.
+    The goal is not simply to execute commands. You must understand what each command does,
+    document your work, preserve evidence integrity, and explain how your findings support
+    your conclusions.
+  </p>
+
+  <aside aria-label="Important information" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Important:</strong> Digital forensics requires careful handling of evidence.
+      Throughout this lab, assume that the evidence could be reviewed by another forensic
+      investigator. Document your actions and do not make conclusions that are not supported
+      by evidence.
+    </p>
+  </aside>
+
+  <h2>Learning Objectives</h2>
+
+  <p>After completing this lab, you should be able to:</p>
+
+  <ul>
+    <li>Explain the purpose of digital evidence preservation.</li>
+    <li>Set up an Ubuntu-based forensic workstation.</li>
+    <li>Install and verify open-source command-line forensic tools.</li>
+    <li>Acquire a forensic image from an approved evidence source.</li>
+    <li>Calculate and verify SHA-256 hashes.</li>
+    <li>Identify partitions within a forensic image.</li>
+    <li>Identify the file system contained within a partition.</li>
+    <li>List files and directories using The Sleuth Kit.</li>
+    <li>Identify deleted files.</li>
+    <li>Extract selected files from a forensic image.</li>
+    <li>Document evidence using a basic chain-of-custody process.</li>
+    <li>Maintain professional forensic notes and documentation.</li>
+  </ul>
+
+  <h2>Investigation Scenario</h2>
+
+  <p>
+    You are working as a junior digital forensic investigator for a security team.
+    Your organization has provided you with a computer image because the computer may
+    have been involved in suspicious activity.
+  </p>
+
+  <p>The security team believes the computer may have been used to:</p>
+
+  <ul>
+    <li>Download suspicious files.</li>
+    <li>Access potentially malicious websites.</li>
+    <li>Create or modify unauthorized files.</li>
+    <li>Delete files after suspicious activity occurred.</li>
+    <li>Store information relevant to a security investigation.</li>
+  </ul>
+
+  <p>Your initial responsibility is to answer the following question:</p>
+
+  <blockquote>
+    <p>
+      <strong>
+        How can you acquire and preserve the evidence while demonstrating that the evidence
+        has not been altered?
+      </strong>
+    </p>
+  </blockquote>
+
+  <p>
+    Later labs will build on the evidence you preserve during this investigation.
+  </p>
+
+  <h2>Lab Architecture</h2>
+
+  <p>
+    You will use two computing environments. Your <strong>Mac</strong> will be used as your
+    local work and acquisition computer. Your <strong>Ubuntu virtual machine</strong> will
+    be used as your forensic analysis workstation.
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 1.5em 0;">
+    <caption style="text-align: left; font-weight: bold; margin-bottom: 0.5em;">
+      Lab Environment
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">
+          Environment
+        </th>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">
+          Purpose
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;">
+          macOS computer
+        </td>
+        <td style="border: 1px solid #999; padding: 10px;">
+          Local workstation and approved evidence acquisition environment
+        </td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;">
+          Ubuntu virtual machine
+        </td>
+        <td style="border: 1px solid #999; padding: 10px;">
+          Primary forensic analysis workstation
+        </td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;">
+          Instructor-provided evidence
+        </td>
+        <td style="border: 1px solid #999; padding: 10px;">
+          Evidence source for the investigation
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <aside aria-label="Cloud computing warning" style="border-left: 5px solid #b8860b; padding: 1em; margin: 1.5em 0; background-color: #fff8e1;">
+    <p>
+      <strong>Cloud Computing Warning:</strong> You may complete this lab using a cloud-based
+      Ubuntu virtual machine. However, cloud providers may charge for compute, storage, and
+      network resources. <strong>UVU will not pay for cloud computing costs associated with
+      this assignment.</strong> You are responsible for any charges generated by your account.
+    </p>
+  </aside>
+
+  <h2>Important Safety and Evidence Rules</h2>
+
+  <p>Follow these rules throughout the entire investigation.</p>
+
+  <ol>
+    <li>
+      <strong>Do not image your personal Mac.</strong>
+      You will work with an instructor-approved evidence source.
+    </li>
+    <li>
+      <strong>Do not modify the original evidence.</strong>
+      Treat the original evidence as read-only.
+    </li>
+    <li>
+      <strong>Do not execute suspicious programs.</strong>
+      If you discover a suspicious executable, do not run it.
+    </li>
+    <li>
+      <strong>Do not delete evidence.</strong>
+      Preserve the evidence and document your actions.
+    </li>
+    <li>
+      <strong>Do not guess device names.</strong>
+      Always verify the device identifier before performing acquisition.
+    </li>
+    <li>
+      <strong>Verify hashes.</strong>
+      A transferred or acquired evidence image must be verified.
+    </li>
+    <li>
+      <strong>Document errors.</strong>
+      If a command fails, record the command, error message, and troubleshooting steps.
+    </li>
+    <li>
+      <strong>Protect sensitive information.</strong>
+      Do not publish or share personal information discovered in the evidence.
+    </li>
+  </ol>
+
+  <h2>Open-Source Tools</h2>
+
+  <p>
+    This lab uses open-source command-line tools. The primary forensic toolkit is
+    <strong>The Sleuth Kit</strong>.
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 1.5em 0;">
+    <caption style="text-align: left; font-weight: bold; margin-bottom: 0.5em;">
+      Tools Used in This Lab
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">
+          Tool
+        </th>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">
+          Purpose
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>dc3dd</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Forensic acquisition and hashing</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>sha256sum</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">SHA-256 integrity verification</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>hashdeep</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Hashing evidence collections</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>img_stat</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Forensic image information</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>mmls</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Partition analysis</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>fsstat</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">File-system analysis</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>fls</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">File and directory listing</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>istat</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">File metadata analysis</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>icat</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Individual file extraction</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>tsk_recover</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">File recovery</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>mactime</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Timeline generation</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>file</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">File-type identification</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>exiftool</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">File metadata analysis</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>strings</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Readable-string discovery</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;"><code>grep</code></td>
+        <td style="border: 1px solid #999; padding: 10px;">Searching forensic output</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Part 1: Create Your Ubuntu Forensic Workstation</h2>
+
+  <p>
+    Start your Ubuntu virtual machine. You should have sufficient storage for the forensic
+    image and recovered evidence.
+  </p>
+
+  <p>Recommended minimum configuration:</p>
+
+  <ul>
+    <li>4 CPU cores</li>
+    <li>8 GB RAM</li>
+    <li>100 GB available storage</li>
+    <li>Ubuntu 22.04 LTS or Ubuntu 24.04 LTS</li>
+  </ul>
+
+  <p>Create a dedicated forensic workspace:</p>
+
+  <pre><code>mkdir -p ~/forensics
+cd ~/forensics
+
+mkdir evidence
+mkdir case
+mkdir exports
+mkdir hashes
+mkdir logs
+mkdir reports
+mkdir screenshots
+mkdir timelines
+mkdir recovered</code></pre>
+
+  <p>Verify the directory structure:</p>
+
+  <pre><code>find ~/forensics -maxdepth 1 -type d -print</code></pre>
+
+  <p>
+    Take a screenshot showing your forensic workspace.
+  </p>
+
+  <p>
+    Save the screenshot as:
+  </p>
+
+  <pre><code>screenshot01_workspace.png</code></pre>
+
+  <h2>Part 2: Install the Forensic Tools</h2>
+
+  <p>Update the Ubuntu package repository:</p>
+
+  <pre><code>sudo apt update</code></pre>
+
+  <p>Install the required tools:</p>
+
+  <pre><code>sudo apt install sleuthkit dc3dd hashdeep exiftool testdisk p7zip-full file</code></pre>
+
+  <p>Verify The Sleuth Kit installation:</p>
+
+  <pre><code>which img_stat
+which mmls
+which fsstat
+which fls
+which istat
+which icat
+which tsk_recover
+which mactime</code></pre>
+
+  <p>Verify the supporting tools:</p>
+
+  <pre><code>which dc3dd
+which hashdeep
+which exiftool
+which file</code></pre>
+
+  <p>
+    Record the versions of the tools available on your system.
+  </p>
+
+  <pre><code>fls -V
+mmls -V
+fsstat -V
+istat -V
+hashdeep -V
+exiftool -ver</code></pre>
+
+  <p>Create a tool inventory:</p>
+
+  <pre><code>{
+  echo "Forensic Tool Inventory"
+  echo "======================="
+  echo
+  echo "The Sleuth Kit:"
+  fls -V
+  mmls -V
+  fsstat -V
+  istat -V
+  echo
+  echo "Supporting Tools:"
+  hashdeep -V
+  exiftool -ver
+} &gt; ~/forensics/case/tools.txt</code></pre>
+
+  <p>
+    Review the file:
+  </p>
+
+  <pre><code>cat ~/forensics/case/tools.txt</code></pre>
+
+  <p>
+    Include <code>tools.txt</code> in your final submission.
+  </p>
+
+  <h2>Part 3: Understand Digital Evidence Integrity</h2>
+
+  <p>
+    A forensic investigator must be able to demonstrate that evidence has not been
+    unintentionally changed during acquisition, transfer, or analysis.
+  </p>
+
+  <p>
+    Cryptographic hashes provide a way to verify the integrity of files.
+    In this lab, you will primarily use <strong>SHA-256</strong>.
+  </p>
+
+  <p>For a file named <code>evidence.dd</code>, the command is:</p>
+
+  <pre><code>sha256sum evidence.dd</code></pre>
+
+  <p>
+    The resulting hash should be recorded as part of your evidence documentation.
+  </p>
+
+  <aside aria-label="Evidence preservation warning" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+    <p>
+      <strong>Evidence Preservation Rule:</strong>
+      Never assume that two copies of an evidence image are identical. Calculate and
+      compare their hashes.
+    </p>
+  </aside>
+
+  <h2>Part 4: Identify the Approved Evidence Source on macOS</h2>
+
+  <p>
+    Your instructor will provide an approved evidence source. This may be a dedicated
+    evidence disk, removable media, or another controlled source.
+  </p>
+
+  <p>On macOS, list available disks:</p>
+
+  <pre><code>diskutil list</code></pre>
+
+  <p>
+    Carefully identify the evidence device using the information provided by your instructor.
+  </p>
+
+  <aside aria-label="Critical warning about disk selection" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+    <p>
+      <strong>Critical Warning:</strong>
+      Do not blindly use an example such as <code>/dev/disk4</code>.
+      Your computer may assign a different device identifier.
+      Selecting the wrong device can result in data loss.
+    </p>
+  </aside>
+
+  <p>
+    Record the following information in your investigation notes:
+  </p>
+
+  <ul>
+    <li>Device identifier</li>
+    <li>Device size</li>
+    <li>Device name</li>
+    <li>Date and time of acquisition</li>
+    <li>Your name</li>
+  </ul>
+
+  <h2>Part 5: Acquire the Evidence</h2>
+
+  <p>
+    Follow the acquisition procedure provided by your instructor for the evidence source
+    used in this course.
+  </p>
+
+  <p>
+    The objective is to create a forensic image without modifying the original evidence.
+    An example output file might be:
+  </p>
+
+  <pre><code>suspect.dd</code></pre>
+
+  <p>
+    If your instructor directs you to use <code>dc3dd</code>, the general structure of
+    the command is:
+  </p>
+
+  <pre><code>sudo dc3dd if=SOURCE_DEVICE of=suspect.dd hash=sha256 log=acquisition.log</code></pre>
+
+  <p>
+    <strong>Do not execute this command until you have confirmed the correct source device.</strong>
+    Replace <code>SOURCE_DEVICE</code> with the device identifier provided for your lab.
+  </p>
+
+  <p>
+    When acquisition is complete, preserve the acquisition log.
+  </p>
+
+  <p>
+    Your acquisition directory should contain information similar to:
+  </p>
+
+  <pre><code>acquisition/
+└── acquisition.log</code></pre>
+
+  <h2>Part 6: Calculate the Evidence Hash</h2>
+
+  <p>
+    Calculate the SHA-256 hash of the forensic image.
+  </p>
+
+  <pre><code>shasum -a 256 suspect.dd</code></pre>
+
+  <p>Save the hash:</p>
+
+  <pre><code>shasum -a 256 suspect.dd &gt; ~/forensics/hashes/evidence_sha256.txt</code></pre>
+
+  <p>
+    Verify that the hash file contains the expected information:
+  </p>
+
+  <pre><code>cat ~/forensics/hashes/evidence_sha256.txt</code></pre>
+
+  <h2>Part 7: Transfer the Evidence to Ubuntu</h2>
+
+  <p>
+    Transfer the forensic image and acquisition documentation to your Ubuntu forensic
+    workstation.
+  </p>
+
+  <p>
+    Place the forensic image in:
+  </p>
+
+  <pre><code>~/forensics/evidence/</code></pre>
+
+  <p>
+    Place acquisition documentation in:
+  </p>
+
+  <pre><code>~/forensics/logs/</code></pre>
+
+  <p>
+    After transferring the evidence, calculate its SHA-256 hash again:
+  </p>
+
+  <pre><code>cd ~/forensics/evidence
+
+sha256sum suspect.dd</code></pre>
+
+  <p>
+    Compare this value with the hash generated during acquisition.
+  </p>
+
+  <h3>Evidence Integrity Checkpoint</h3>
+
+  <table style="width:100%; border-collapse:collapse; margin:1.5em 0;">
+    <caption style="text-align:left; font-weight:bold; margin-bottom:0.5em;">
+      Evidence Hash Verification
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col" style="border:1px solid #999; padding:10px; text-align:left;">
+          Location
+        </th>
+        <th scope="col" style="border:1px solid #999; padding:10px; text-align:left;">
+          SHA-256 Hash
+        </th>
+        <th scope="col" style="border:1px solid #999; padding:10px; text-align:left;">
+          Match?
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">macOS / Acquisition</td>
+        <td style="border:1px solid #999; padding:10px;">Your hash</td>
+        <td style="border:1px solid #999; padding:10px;">Yes / No</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Ubuntu</td>
+        <td style="border:1px solid #999; padding:10px;">Your hash</td>
+        <td style="border:1px solid #999; padding:10px;">Yes / No</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    If the hashes do not match, <strong>stop the investigation</strong>.
+    Document the discrepancy and troubleshoot the transfer before continuing.
+  </p>
+
+  <h2>Part 8: Examine the Forensic Image</h2>
+
+  <p>
+    You will now begin analyzing the forensic image using The Sleuth Kit.
+  </p>
+
+  <h3>Step 1: Image Information</h3>
+
+  <pre><code>img_stat ~/forensics/evidence/suspect.dd</code></pre>
+
+  <p>Record significant information about the image.</p>
+
+  <h3>Step 2: Partition Analysis</h3>
+
+  <pre><code>mmls ~/forensics/evidence/suspect.dd</code></pre>
+
+  <p>Identify:</p>
+
+  <ul>
+    <li>Partition scheme</li>
+    <li>Partition start sector</li>
+    <li>Partition size</li>
+    <li>Unallocated space</li>
+    <li>Potential file systems</li>
+  </ul>
+
+  <aside aria-label="Important partition analysis information" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Important:</strong>
+      Do not assume the partition offset. Use the output from <code>mmls</code> to
+      determine the correct offset.
+    </p>
+  </aside>
+
+  <h2>Part 9: Analyze the File System</h2>
+
+  <p>
+    Using the partition offset identified in the previous step, run:
+  </p>
+
+  <pre><code>fsstat -o YOUR_OFFSET ~/forensics/evidence/suspect.dd</code></pre>
+
+  <p>Document:</p>
+
+  <ul>
+    <li>File-system type</li>
+    <li>Block size</li>
+    <li>Volume information</li>
+    <li>File-system statistics</li>
+    <li>Other significant information</li>
+  </ul>
+
+  <h2>Part 10: List Files and Directories</h2>
+
+  <p>List files in the file system:</p>
+
+  <pre><code>fls -o YOUR_OFFSET ~/forensics/evidence/suspect.dd</code></pre>
+
+  <p>Perform a recursive listing and save the results:</p>
+
+  <pre><code>fls -r -o YOUR_OFFSET ~/forensics/evidence/suspect.dd &gt; ~/forensics/case/files.txt</code></pre>
+
+  <p>Review the output:</p>
+
+  <pre><code>less ~/forensics/case/files.txt</code></pre>
+
+  <p>
+    Use command-line searches to identify potentially interesting information.
+  </p>
+
+  <pre><code>grep -i "download" ~/forensics/case/files.txt
+
+grep -i "\.exe" ~/forensics/case/files.txt
+
+grep -i "password" ~/forensics/case/files.txt</code></pre>
+
+  <p>
+    Identify at least <strong>five files or directories</strong> that you believe may
+    be relevant to the investigation.
+  </p>
+
+  <h2>Part 11: Investigate Deleted Files</h2>
+
+  <p>
+    Deleted files may continue to contain useful forensic information.
+    Use The Sleuth Kit to identify deleted files.
+  </p>
+
+  <pre><code>fls -r -d -o YOUR_OFFSET ~/forensics/evidence/suspect.dd</code></pre>
+
+  <p>
+    Identify at least <strong>three deleted files</strong>.
+  </p>
+
+  <p>For each deleted file, document:</p>
+
+  <ul>
+    <li>Filename</li>
+    <li>Metadata address or inode</li>
+    <li>Original path, if available</li>
+    <li>File type</li>
+    <li>Why the file may be relevant</li>
+  </ul>
+
+  <h2>Part 12: Examine File Metadata</h2>
+
+  <p>
+    Select one interesting file and use <code>istat</code> to examine its file-system metadata.
+  </p>
+
+  <pre><code>istat -o YOUR_OFFSET ~/forensics/evidence/suspect.dd INODE</code></pre>
+
+  <p>Document:</p>
+
+  <ul>
+    <li>File size</li>
+    <li>File type</li>
+    <li>Metadata address</li>
+    <li>Modified time</li>
+    <li>Access time</li>
+    <li>Change time</li>
+    <li>Allocated or deleted status</li>
+  </ul>
+
+  <h2>Part 13: Recover a Deleted File</h2>
+
+  <p>
+    Select one relevant deleted file and attempt to recover it using <code>icat</code>.
+  </p>
+
+  <pre><code>mkdir -p ~/forensics/recovered
+
+icat -o YOUR_OFFSET ~/forensics/evidence/suspect.dd INODE &gt; ~/forensics/recovered/recovered_file</code></pre>
+
+  <p>Identify the recovered file:</p>
+
+  <pre><code>file ~/forensics/recovered/recovered_file</code></pre>
+
+  <p>Calculate its SHA-256 hash:</p>
+
+  <pre><code>sha256sum ~/forensics/recovered/recovered_file</code></pre>
+
+  <p>Examine embedded metadata where applicable:</p>
+
+  <pre><code>exiftool ~/forensics/recovered/recovered_file</code></pre>
+
+  <p>
+    Explain whether the file was successfully recovered and what information you were
+    able to obtain from it.
+  </p>
+
+  <h2>Part 14: Generate a Basic File Timeline</h2>
+
+  <p>
+    The Sleuth Kit can be used to create a timeline of file-system activity.
+  </p>
+
+  <p>Create a body file:</p>
+
+  <pre><code>fls -r -m / -o YOUR_OFFSET ~/forensics/evidence/suspect.dd &gt; ~/forensics/timelines/bodyfile.txt</code></pre>
+
+  <p>Generate the timeline:</p>
+
+  <pre><code>mactime -b ~/forensics/timelines/bodyfile.txt &gt; ~/forensics/timelines/timeline.csv</code></pre>
+
+  <p>Review the timeline:</p>
+
+  <pre><code>less ~/forensics/timelines/timeline.csv</code></pre>
+
+  <p>
+    Identify at least <strong>10 significant events</strong>.
+  </p>
+
+  <h2>Part 15: Search the Evidence</h2>
+
+  <p>
+    Use <code>strings</code> as an investigative tool.
+  </p>
+
+  <pre><code>strings ~/forensics/evidence/suspect.dd | grep -i "http"</code></pre>
+
+  <p>Try additional searches:</p>
+
+  <pre><code>strings ~/forensics/evidence/suspect.dd | grep -i "password"
+
+strings ~/forensics/evidence/suspect.dd | grep -i "username"
+
+strings ~/forensics/evidence/suspect.dd | grep -i "download"</code></pre>
+
+  <aside aria-label="Important information about strings" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Forensic Interpretation:</strong>
+      A string discovered using <code>strings</code> is not automatically proof that a
+      user performed an action. Treat it as an investigative lead and attempt to validate
+      the information using additional evidence.
+    </p>
+  </aside>
+
+  <h2>Part 16: Recover Files from the Image</h2>
+
+  <p>
+    Attempt to recover files from the forensic image:
+  </p>
+
+  <pre><code>tsk_recover -o YOUR_OFFSET ~/forensics/evidence/suspect.dd ~/forensics/recovered/</code></pre>
+
+  <p>List the recovered files:</p>
+
+  <pre><code>find ~/forensics/recovered -type f</code></pre>
+
+  <p>Identify the recovered file types:</p>
+
+  <pre><code>file ~/forensics/recovered/*</code></pre>
+
+  <p>
+    Identify files that may be relevant to the investigation.
+  </p>
+
+  <h2>Part 17: Hash the Recovered Evidence</h2>
+
+  <p>
+    Create a hash inventory of your recovered evidence:
+  </p>
+
+  <pre><code>hashdeep -r ~/forensics/recovered/ &gt; ~/forensics/hashes/recovered_hashes.txt</code></pre>
+
+  <p>
+    Include this file in your final submission.
+  </p>
+
+  <h2>Part 18: Document the Chain of Custody</h2>
+
+  <p>
+    Create a file called:
+  </p>
+
+  <pre><code>chain_of_custody.csv</code></pre>
+
+  <p>
+    Your file should document important evidence-handling events.
+  </p>
+
+  <table style="width:100%; border-collapse:collapse; margin:1.5em 0;">
+    <caption style="text-align:left; font-weight:bold; margin-bottom:0.5em;">
+      Chain of Custody Example
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col" style="border:1px solid #999; padding:10px;">Date/Time</th>
+        <th scope="col" style="border:1px solid #999; padding:10px;">Person</th>
+        <th scope="col" style="border:1px solid #999; padding:10px;">Action</th>
+        <th scope="col" style="border:1px solid #999; padding:10px;">Evidence</th>
+        <th scope="col" style="border:1px solid #999; padding:10px;">Hash</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Date/time</td>
+        <td style="border:1px solid #999; padding:10px;">Your name</td>
+        <td style="border:1px solid #999; padding:10px;">Acquired</td>
+        <td style="border:1px solid #999; padding:10px;">Evidence image</td>
+        <td style="border:1px solid #999; padding:10px;">SHA-256</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Date/time</td>
+        <td style="border:1px solid #999; padding:10px;">Your name</td>
+        <td style="border:1px solid #999; padding:10px;">Transferred</td>
+        <td style="border:1px solid #999; padding:10px;">Evidence image</td>
+        <td style="border:1px solid #999; padding:10px;">SHA-256</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Date/time</td>
+        <td style="border:1px solid #999; padding:10px;">Your name</td>
+        <td style="border:1px solid #999; padding:10px;">Analyzed</td>
+        <td style="border:1px solid #999; padding:10px;">Evidence image</td>
+        <td style="border:1px solid #999; padding:10px;">SHA-256</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Part 19: Investigation Questions</h2>
+
+  <p>
+    Your investigation is not complete simply because the commands executed successfully.
+    You must interpret and document what you discovered.
+  </p>
+
+  <h3>Question 1: Evidence Integrity</h3>
+
+  <p>
+    Did the SHA-256 hash of the evidence remain consistent after transfer?
+    Explain how you verified the integrity of the evidence.
+  </p>
+
+  <h3>Question 2: Disk Structure</h3>
+
+  <p>
+    What partition structure did you identify using <code>mmls</code>?
+    What is the starting sector of the relevant partition?
+  </p>
+
+  <h3>Question 3: File System</h3>
+
+  <p>
+    What file system did you identify using <code>fsstat</code>?
+    Provide evidence supporting your answer.
+  </p>
+
+  <h3>Question 4: Relevant Files</h3>
+
+  <p>
+    Identify at least five files or directories that may be relevant to the investigation.
+    Explain why each one is interesting.
+  </p>
+
+  <h3>Question 5: Deleted Evidence</h3>
+
+  <p>
+    Identify at least three deleted files. Explain what information you were able to
+    determine about them.
+  </p>
+
+  <h3>Question 6: File Recovery</h3>
+
+  <p>
+    Were you able to recover a deleted file? Explain what you recovered and what evidence
+    it provided.
+  </p>
+
+  <h3>Question 7: Timeline</h3>
+
+  <p>
+    Identify at least ten significant file-system events and explain what they may indicate.
+  </p>
+
+  <h3>Question 8: Forensic Reasoning</h3>
+
+  <p>
+    Identify one finding that you consider <strong>confirmed</strong> and one finding that
+    is only <strong>possible</strong>. Explain the difference and describe what additional
+    evidence would be required to increase your confidence.
+  </p>
+
+  <h2>Part 20: Forensic Report</h2>
+
+  <p>
+    Create a professional forensic report in PDF format.
+  </p>
+
+  <p>Your report must contain the following sections:</p>
+
+  <ol>
+    <li><strong>Executive Summary</strong> – Briefly summarize the investigation.</li>
+    <li><strong>Scope</strong> – Explain what evidence was analyzed.</li>
+    <li><strong>Tools</strong> – Identify the tools and versions used.</li>
+    <li><strong>Evidence</strong> – Identify the evidence image and SHA-256 hash.</li>
+    <li><strong>Methodology</strong> – Explain your acquisition and analysis process.</li>
+    <li><strong>Evidence Integrity</strong> – Explain how the evidence was verified.</li>
+    <li><strong>Findings</strong> – Document important discoveries.</li>
+    <li><strong>Deleted Evidence</strong> – Document deleted and recovered files.</li>
+    <li><strong>Timeline</strong> – Include your significant timeline events.</li>
+    <li><strong>Analysis</strong> – Explain what your findings mean.</li>
+    <li><strong>Conclusion</strong> – Explain what you believe happened based on the evidence.</li>
+    <li><strong>Limitations</strong> – Identify anything you could not determine.</li>
+  </ol>
+
+  <h2>Final Submission Structure</h2>
+
+  <p>
+    Organize your files using the following structure:
+  </p>
+
+  <pre><code>LastName_Forensics/
+│
+├── report/
+│   └── forensic_report.pdf
+│
+├── hashes/
+│   ├── evidence_sha256.txt
+│   └── recovered_hashes.txt
+│
+├── acquisition/
+│   └── acquisition.log
+│
+├── timelines/
+│   ├── bodyfile.txt
+│   └── timeline.csv
+│
+├── recovered/
+│   └── recovered_evidence/
+│
+├── screenshots/
+│   ├── screenshot01_workspace.png
+│   ├── screenshot02_tools.png
+│   ├── screenshot03_mmls.png
+│   ├── screenshot04_fsstat.png
+│   └── ...
+│
+└── notes/
+    ├── investigation_notes.md
+    ├── tools.txt
+    └── chain_of_custody.csv</code></pre>
+
+  <aside aria-label="Submission warning" style="border-left: 5px solid #b8860b; padding: 1em; margin: 1.5em 0; background-color: #fff8e1;">
+    <p>
+      <strong>Do not submit the entire forensic image</strong> unless your instructor
+      specifically requests it. Forensic images can be very large and may contain
+      sensitive information.
+    </p>
+  </aside>
+
+  <h2>Evidence Documentation Requirements</h2>
+
+  <p>
+    Screenshots should demonstrate your work rather than simply showing that a command
+    was typed.
+  </p>
+
+  <p>Important screenshots should include:</p>
+
+  <ul>
+    <li>Your Ubuntu forensic workspace.</li>
+    <li>Installed forensic tools.</li>
+    <li>Tool versions.</li>
+    <li>Evidence hash.</li>
+    <li><code>img_stat</code> output.</li>
+    <li><code>mmls</code> output.</li>
+    <li><code>fsstat</code> output.</li>
+    <li>Relevant <code>fls</code> results.</li>
+    <li>Deleted-file evidence.</li>
+    <li>File metadata.</li>
+    <li>Recovered evidence.</li>
+    <li>Timeline results.</li>
+  </ul>
+
+  <h2>Grading</h2>
+
+  <table style="width:100%; border-collapse:collapse; margin:1.5em 0;">
+    <caption style="text-align:left; font-weight:bold; margin-bottom:0.5em;">
+      Lab 1 Grading Rubric — 100 Points
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col" style="border:1px solid #999; padding:10px; text-align:left;">Category</th>
+        <th scope="col" style="border:1px solid #999; padding:10px; text-align:center;">Points</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Ubuntu forensic workstation setup</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">5</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Tool installation and verification</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">5</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Evidence acquisition and documentation</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">10</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Hashing and integrity verification</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">10</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Partition analysis</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">10</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">File-system and file analysis</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">10</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Deleted-file analysis and recovery</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">15</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Metadata and timeline analysis</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">15</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Forensic report</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">15</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Documentation and chain of custody</td>
+        <td style="border:1px solid #999; padding:10px; text-align:center;">5</td>
+      </tr>
+      <tr>
+        <th scope="row" style="border:1px solid #999; padding:10px; text-align:left;">Total</th>
+        <th style="border:1px solid #999; padding:10px; text-align:center;">100</th>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Accessibility and Usability Expectations</h2>
+
+  <p>
+    This assignment is designed to be accessible to students using different technologies
+    and learning environments.
+  </p>
+
+  <ul>
+    <li>Use the provided headings to navigate the assignment.</li>
+    <li>Commands are provided in text so they can be copied into a terminal.</li>
+    <li>Do not rely on color alone to communicate important information.</li>
+    <li>Use descriptive filenames for screenshots.</li>
+    <li>When submitting screenshots, make sure terminal text is readable.</li>
+    <li>If a screenshot contains important information, also describe the finding in your report.</li>
+    <li>Use tables with clear column headings when documenting evidence.</li>
+    <li>Use a logical file and folder structure for your submission.</li>
+  </ul>
+
+  <h2>Final Reminder</h2>
+
+  <p>
+    Digital forensics is not simply about finding suspicious files. A professional
+    investigation requires you to:
+  </p>
+
+  <ol>
+    <li><strong>Preserve</strong> the evidence.</li>
+    <li><strong>Verify</strong> its integrity.</li>
+    <li><strong>Examine</strong> the evidence systematically.</li>
+    <li><strong>Document</strong> your actions.</li>
+    <li><strong>Analyze</strong> the information you discover.</li>
+    <li><strong>Support</strong> your conclusions with evidence.</li>
+  </ol>
+
+  <p>
+    If you encounter an error, do not simply skip the step. Capture the error, document
+    what you attempted, and explain how you attempted to resolve it. Troubleshooting is
+    part of working as a cybersecurity and digital forensics professional.
+  </p>
+
+</div>
