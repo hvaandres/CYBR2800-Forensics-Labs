@@ -1,0 +1,1489 @@
+<div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6; max-width: 1100px; margin: 0 auto; color: #222;">
+
+  <!-- Assignment Header -->
+  <header>
+    <h1>Digital Forensics Lab 3: Timeline Analysis, Incident Reconstruction &amp; Forensic Reporting</h1>
+
+    <p>
+      <strong>Course:</strong> CYBR 2800<br>
+      <strong>Lab:</strong> 3 of 3<br>
+      <strong>Estimated Time:</strong> 4–6 hours<br>
+      <strong>Total Points:</strong> 100<br>
+      <strong>Difficulty:</strong> Intermediate
+    </p>
+  </header>
+
+  <hr>
+
+  <!-- Overview -->
+  <section aria-labelledby="overview">
+    <h2 id="overview">Lab Overview</h2>
+
+    <p>
+      In Labs 1 and 2, you learned how to acquire, preserve, verify, and examine
+      digital evidence. You also recovered deleted files and examined filesystem
+      metadata and system artifacts.
+    </p>
+
+    <p>
+      In this final lab, you will act as a <strong>digital forensic investigator</strong>.
+    </p>
+
+    <p>
+      Your goal is no longer simply to find individual files. Instead, you must
+      determine:
+    </p>
+
+    <blockquote>
+      <p>
+        <strong>What happened on the system, when did it happen, how did it happen,
+        and what evidence supports your conclusion?</strong>
+      </p>
+    </blockquote>
+
+    <p>
+      You will use the evidence image from the previous labs to build a timeline,
+      correlate multiple artifacts, reconstruct the most likely sequence of events,
+      and produce a professional forensic report.
+    </p>
+  </section>
+
+  <!-- Learning Objectives -->
+  <section aria-labelledby="objectives">
+    <h2 id="objectives">Learning Objectives</h2>
+
+    <p>By completing this lab, you should be able to:</p>
+
+    <ol>
+      <li>Create a forensic timeline from filesystem metadata.</li>
+      <li>Identify important timestamps associated with files.</li>
+      <li>Correlate filesystem activity with system and application logs.</li>
+      <li>Identify suspicious user activity.</li>
+      <li>Reconstruct a sequence of events from multiple evidence sources.</li>
+      <li>Distinguish facts from assumptions.</li>
+      <li>Document evidence using forensic best practices.</li>
+      <li>Explain the limitations of forensic evidence.</li>
+      <li>Develop an evidence-supported incident timeline.</li>
+      <li>Produce a professional digital forensic report.</li>
+    </ol>
+  </section>
+
+  <!-- Important Rules -->
+  <section aria-labelledby="rules">
+    <h2 id="rules">Important Lab Rules</h2>
+
+    <aside style="border-left: 5px solid #333; padding: 12px 16px; margin: 20px 0;">
+      <p>
+        <strong>Authorized Evidence Only:</strong>
+        Use only the instructor-provided forensic evidence image.
+      </p>
+
+      <p>
+        Do not investigate your personal computer, another student's computer,
+        or any system for which you do not have authorization.
+      </p>
+
+      <p>
+        All analysis must be performed on a <strong>working copy</strong> of the evidence.
+        Do not modify the original evidence image.
+      </p>
+    </aside>
+  </section>
+
+  <!-- Part 1 -->
+  <section aria-labelledby="part1">
+    <h2 id="part1">Part 1 — Prepare Your Forensic Workspace</h2>
+
+    <p>Create your Lab 3 working directory:</p>
+
+    <pre><code>mkdir -p ~/CYBR2800_Lab3
+cd ~/CYBR2800_Lab3</code></pre>
+
+    <p>Create directories for your investigation:</p>
+
+    <pre><code>mkdir -p timeline
+mkdir -p output
+mkdir -p recovered
+mkdir -p screenshots
+mkdir -p notes
+mkdir -p report
+mkdir -p hashes</code></pre>
+
+    <p>Your directory should look similar to:</p>
+
+    <pre><code>CYBR2800_Lab3/
+├── timeline/
+├── output/
+├── recovered/
+├── screenshots/
+├── notes/
+├── report/
+└── hashes/</code></pre>
+  </section>
+
+  <!-- Part 2 -->
+  <section aria-labelledby="part2">
+    <h2 id="part2">Part 2 — Verify the Evidence</h2>
+
+    <p>
+      Copy the instructor-provided evidence image into your working directory.
+      The exact location may vary depending on how your instructor distributed
+      the evidence.
+    </p>
+
+    <p>For example:</p>
+
+    <pre><code>cp ~/Evidence/CYBR2800_Lab3_Evidence.dd .</code></pre>
+
+    <p>Calculate the SHA-256 hash:</p>
+
+    <pre><code>sha256sum CYBR2800_Lab3_Evidence.dd</code></pre>
+
+    <p>
+      Compare your result with the SHA-256 hash provided by your instructor.
+    </p>
+
+    <p>Save your result:</p>
+
+    <pre><code>sha256sum CYBR2800_Lab3_Evidence.dd &gt; hashes/evidence_hash.txt</code></pre>
+
+    <h3>Evidence Integrity Question</h3>
+
+    <p>
+      Answer the following question in your investigation notes:
+    </p>
+
+    <p>
+      <strong>Does the hash match the instructor-provided hash?</strong>
+    </p>
+
+    <aside style="border-left: 5px solid #333; padding: 12px 16px; margin: 20px 0;">
+      <p>
+        If the hash does not match, <strong>stop the investigation and notify your
+        instructor</strong>. Do not continue analyzing a potentially altered
+        evidence image.
+      </p>
+    </aside>
+  </section>
+
+  <!-- Part 3 -->
+  <section aria-labelledby="part3">
+    <h2 id="part3">Part 3 — Review Your Lab 2 Findings</h2>
+
+    <p>
+      Before creating your timeline, review the evidence you identified during
+      Lab 2.
+    </p>
+
+    <p>Look specifically for:</p>
+
+    <ul>
+      <li>User accounts</li>
+      <li>Deleted files</li>
+      <li>Suspicious filenames</li>
+      <li>Shell history</li>
+      <li>Authentication activity</li>
+      <li>Network activity</li>
+      <li>Remote access</li>
+      <li>Configuration changes</li>
+      <li>Scripts</li>
+      <li>Credentials</li>
+      <li>File timestamps</li>
+      <li>Application activity</li>
+    </ul>
+
+    <p>Create your investigation notes:</p>
+
+    <pre><code>nano notes/investigation_notes.md</code></pre>
+
+    <p>
+      Record important observations from Lab 2 that may help you reconstruct
+      the sequence of events.
+    </p>
+  </section>
+
+  <!-- Part 4 -->
+  <section aria-labelledby="part4">
+    <h2 id="part4">Part 4 — Generate a Filesystem Timeline</h2>
+
+    <p>
+      The Sleuth Kit includes a tool called <code>fls</code> that can produce
+      filesystem metadata information.
+    </p>
+
+    <p>First, identify the filesystem:</p>
+
+    <pre><code>fsstat CYBR2800_Lab3_Evidence.dd</code></pre>
+
+    <p>
+      Generate a recursive filesystem listing in bodyfile format:
+    </p>
+
+    <pre><code>fls -r -m / CYBR2800_Lab3_Evidence.dd &gt; timeline/filesystem_bodyfile.txt</code></pre>
+
+    <p>Review the results:</p>
+
+    <pre><code>less timeline/filesystem_bodyfile.txt</code></pre>
+
+    <p>
+      Search for specific users or files when appropriate:
+    </p>
+
+    <pre><code>grep -i "alex" timeline/filesystem_bodyfile.txt</code></pre>
+
+    <p>Search for potentially important files:</p>
+
+    <pre><code>grep -Ei "password|credential|investigation|maintenance|suspicious|backup" \
+timeline/filesystem_bodyfile.txt</code></pre>
+
+    <p>
+      Record important observations in your investigation notes.
+    </p>
+  </section>
+
+  <!-- Part 5 -->
+  <section aria-labelledby="part5">
+    <h2 id="part5">Part 5 — Create a Human-Readable Timeline</h2>
+
+    <p>
+      Use <code>mactime</code> to convert the filesystem metadata into a
+      human-readable timeline.
+    </p>
+
+    <pre><code>mactime -b timeline/filesystem_bodyfile.txt &gt; timeline/filesystem_timeline.txt</code></pre>
+
+    <p>Open the timeline:</p>
+
+    <pre><code>less timeline/filesystem_timeline.txt</code></pre>
+
+    <p>
+      Search for relevant users, filenames, or indicators:
+    </p>
+
+    <pre><code>grep -i "alex" timeline/filesystem_timeline.txt</code></pre>
+
+    <p>Search for potentially important files:</p>
+
+    <pre><code>grep -Ei "password|credential|investigation|maintenance|suspicious|backup" \
+timeline/filesystem_timeline.txt</code></pre>
+
+    <h3>What Are You Looking For?</h3>
+
+    <p>
+      Do not simply search for suspicious filenames. Look for relationships
+      between events.
+    </p>
+
+    <p>For example:</p>
+
+    <pre><code>File Created
+     ↓
+File Modified
+     ↓
+User Command
+     ↓
+Network Activity
+     ↓
+File Deleted</code></pre>
+
+    <p>
+      Your goal is to determine whether the timestamps and artifacts support
+      a sequence of activity.
+    </p>
+  </section>
+
+  <!-- Part 6 -->
+  <section aria-labelledby="part6">
+    <h2 id="part6">Part 6 — Understand File Timestamps</h2>
+
+    <p>
+      Digital forensic investigations frequently rely on filesystem timestamps.
+      The meaning and availability of timestamps can vary depending on the
+      filesystem and forensic tool.
+    </p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Common filesystem timestamp concepts
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Timestamp</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Description</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;"><strong>Modified</strong></td>
+          <td style="border: 1px solid #777; padding: 8px;">
+            Indicates when file contents were modified.
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;"><strong>Accessed</strong></td>
+          <td style="border: 1px solid #777; padding: 8px;">
+            Indicates when a file was accessed, depending on filesystem behavior.
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;"><strong>Changed</strong></td>
+          <td style="border: 1px solid #777; padding: 8px;">
+            Indicates when filesystem metadata changed.
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;"><strong>Birth / Creation</strong></td>
+          <td style="border: 1px solid #777; padding: 8px;">
+            Indicates file creation time when supported and available.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Investigation Question</h3>
+
+    <p>
+      Why should a forensic investigator avoid relying on a single timestamp
+      when reconstructing an incident?
+    </p>
+
+    <p>
+      Support your answer with an example from the evidence image.
+    </p>
+  </section>
+
+  <!-- Part 7 -->
+  <section aria-labelledby="part7">
+    <h2 id="part7">Part 7 — Investigate User Activity</h2>
+
+    <p>
+      Review the user's shell history. First locate the file:
+    </p>
+
+    <pre><code>fls -r CYBR2800_Lab3_Evidence.dd | grep bash_history</code></pre>
+
+    <p>
+      Identify the inode associated with the file.
+    </p>
+
+    <p>Use <code>istat</code> to examine the inode:</p>
+
+    <pre><code>istat CYBR2800_Lab3_Evidence.dd &lt;INODE&gt;</code></pre>
+
+    <p>Extract the file:</p>
+
+    <pre><code>icat CYBR2800_Lab3_Evidence.dd &lt;INODE&gt; &gt; output/bash_history.txt</code></pre>
+
+    <p>Review the extracted content:</p>
+
+    <pre><code>cat output/bash_history.txt</code></pre>
+
+    <p>Look for commands involving:</p>
+
+    <ul>
+      <li><code>sudo</code></li>
+      <li><code>ssh</code></li>
+      <li><code>wget</code></li>
+      <li><code>curl</code></li>
+      <li><code>chmod</code></li>
+      <li><code>rm</code></li>
+      <li><code>cp</code></li>
+      <li><code>mv</code></li>
+      <li>Credential files</li>
+      <li>Configuration files</li>
+      <li>Scripts</li>
+      <li>Network-related commands</li>
+    </ul>
+
+    <p>
+      For each important command, identify where possible:
+    </p>
+
+    <ul>
+      <li>What command was executed?</li>
+      <li>What file or system resource was affected?</li>
+      <li>When did related filesystem activity occur?</li>
+      <li>Is there another artifact that supports the activity?</li>
+    </ul>
+  </section>
+
+  <!-- Part 8 -->
+  <section aria-labelledby="part8">
+    <h2 id="part8">Part 8 — Analyze Authentication Activity</h2>
+
+    <p>Analyze the authentication log:</p>
+
+    <pre><code>/var/log/auth.log</code></pre>
+
+    <p>
+      If you have extracted the file from the image, search it with:
+    </p>
+
+    <pre><code>grep -Ei "login|authentication|accepted|failed|sudo|session" output/auth.log</code></pre>
+
+    <p>Look for:</p>
+
+    <ul>
+      <li>Successful logins</li>
+      <li>Failed authentication attempts</li>
+      <li>Privilege escalation</li>
+      <li><code>sudo</code> activity</li>
+      <li>Session creation</li>
+      <li>Session termination</li>
+    </ul>
+
+    <h3>Investigation Question</h3>
+
+    <p>
+      Determine whether the evidence suggests a normal local user session,
+      suspicious authentication activity, remote access, or another scenario.
+    </p>
+
+    <p>
+      Explain your conclusion and identify the evidence supporting it.
+    </p>
+  </section>
+
+  <!-- Part 9 -->
+  <section aria-labelledby="part9">
+    <h2 id="part9">Part 9 — Investigate Remote Access</h2>
+
+    <p>Analyze:</p>
+
+    <pre><code>/var/log/remote_access.log</code></pre>
+
+    <p>Search for remote activity:</p>
+
+    <pre><code>grep -Ei "ssh|remote|connection|login|session" output/remote_access.log</code></pre>
+
+    <p>For each important event, document:</p>
+
+    <ul>
+      <li>Date and time</li>
+      <li>Source IP address</li>
+      <li>Destination</li>
+      <li>Username</li>
+      <li>Authentication result</li>
+      <li>Other relevant information</li>
+    </ul>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Remote access evidence table
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Time</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Source</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">User</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Event</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Evidence</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 16px;">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Part 10 -->
+  <section aria-labelledby="part10">
+    <h2 id="part10">Part 10 — Investigate Network Activity</h2>
+
+    <p>Analyze:</p>
+
+    <pre><code>/var/log/network_connections.log</code></pre>
+
+    <p>Search for network activity:</p>
+
+    <pre><code>grep -Ei "connection|tcp|udp|ssh|http|https" output/network_connections.log</code></pre>
+
+    <p>For each important connection, document:</p>
+
+    <ul>
+      <li>Timestamp</li>
+      <li>Source</li>
+      <li>Destination</li>
+      <li>Protocol</li>
+      <li>Port</li>
+      <li>Associated user or process, if available</li>
+      <li>Why the connection is relevant</li>
+    </ul>
+  </section>
+
+  <!-- Part 11 -->
+  <section aria-labelledby="part11">
+    <h2 id="part11">Part 11 — Investigate Suspicious Commands</h2>
+
+    <p>
+      During Lab 2, you may have identified artifacts such as:
+    </p>
+
+    <ul>
+      <li><code>suspicious_commands.txt</code></li>
+      <li><code>maintenance.sh</code></li>
+    </ul>
+
+    <p>Extract and examine these artifacts.</p>
+
+    <pre><code>cat output/suspicious_commands.txt</code></pre>
+
+    <p>Review the script:</p>
+
+    <pre><code>cat output/maintenance.sh</code></pre>
+
+    <p>Determine:</p>
+
+    <ol>
+      <li>What does the script do?</li>
+      <li>When was it created?</li>
+      <li>When was it modified?</li>
+      <li>Who appears to have interacted with it?</li>
+      <li>Does it perform any suspicious actions?</li>
+      <li>Does it correspond with other events in the timeline?</li>
+    </ol>
+  </section>
+
+  <!-- Part 12 -->
+  <section aria-labelledby="part12">
+    <h2 id="part12">Part 12 — Investigate Deleted Evidence</h2>
+
+    <p>
+      Review the deleted files recovered during Lab 2.
+    </p>
+
+    <p>Pay particular attention to:</p>
+
+    <ul>
+      <li><code>temporary_credentials.txt</code></li>
+      <li><code>backup_notes.txt</code></li>
+      <li><code>suspicious_commands.txt</code></li>
+    </ul>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Deleted evidence analysis
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Evidence</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Deleted?</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Recovered?</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Relevant?</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Significance</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            temporary_credentials.txt
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            backup_notes.txt
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            suspicious_commands.txt
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <aside style="border-left: 5px solid #333; padding: 12px 16px; margin: 20px 0;">
+      <p>
+        <strong>Important:</strong> A deleted file is not automatically evidence
+        of malicious activity. You must explain why the file is relevant to your
+        investigation.
+      </p>
+    </aside>
+  </section>
+
+  <!-- Part 13 -->
+  <section aria-labelledby="part13">
+    <h2 id="part13">Part 13 — Correlate the Evidence</h2>
+
+    <p>
+      This is one of the most important parts of the lab.
+    </p>
+
+    <p>
+      You now have multiple sources of evidence:
+    </p>
+
+    <pre><code>Filesystem
+    ↓
+User Activity
+    ↓
+Authentication Logs
+    ↓
+Network Activity
+    ↓
+Deleted Files
+    ↓
+Scripts
+    ↓
+File Timestamps</code></pre>
+
+    <p>
+      Your job is to determine whether these artifacts tell a consistent story.
+    </p>
+
+    <p>
+      Do not evaluate each artifact independently. Look for relationships
+      between artifacts and events occurring during the same timeframe.
+    </p>
+  </section>
+
+  <!-- Part 14 -->
+  <section aria-labelledby="part14">
+    <h2 id="part14">Part 14 — Build an Incident Timeline</h2>
+
+    <p>Create:</p>
+
+    <pre><code>timeline/incident_timeline.md</code></pre>
+
+    <p>
+      Your incident timeline must contain at least <strong>10 significant events</strong>.
+    </p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Incident timeline template
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Time</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Event</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Evidence Source</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">User/System</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Significance</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 14px;">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      You may add additional rows as necessary.
+    </p>
+  </section>
+
+  <!-- Part 15 -->
+  <section aria-labelledby="part15">
+    <h2 id="part15">Part 15 — Build the Activity Sequence</h2>
+
+    <p>
+      Based on your evidence, reconstruct the most likely sequence of activity.
+    </p>
+
+    <p>
+      Your sequence may resemble:
+    </p>
+
+    <pre><code>Initial Access
+      ↓
+Authentication
+      ↓
+User Activity
+      ↓
+File/System Activity
+      ↓
+Network Activity
+      ↓
+Possible Data Access
+      ↓
+Cleanup / Deletion</code></pre>
+
+    <p>
+      <strong>Do not assume that every stage occurred.</strong>
+    </p>
+
+    <p>
+      If you cannot prove that an event occurred, classify it using one of
+      the following confidence levels:
+    </p>
+
+    <ul>
+      <li><strong>Confirmed:</strong> Direct evidence supports the event.</li>
+      <li><strong>Probable:</strong> Multiple pieces of evidence strongly support the event.</li>
+      <li><strong>Possible:</strong> Evidence suggests the event, but it cannot be confirmed.</li>
+      <li><strong>Unsupported:</strong> There is insufficient evidence to make the claim.</li>
+    </ul>
+  </section>
+
+  <!-- Part 16 -->
+  <section aria-labelledby="part16">
+    <h2 id="part16">Part 16 — Evidence Correlation</h2>
+
+    <p>
+      For every major conclusion, identify at least two supporting pieces of
+      evidence whenever possible.
+    </p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Evidence correlation table
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Finding</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Evidence #1</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Evidence #2</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Confidence</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #777; padding: 10px;">User accessed system</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 10px;">File was created or modified</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 10px;">Remote access occurred</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 10px;">File was deleted</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+          <td style="border: 1px solid #777; padding: 10px;">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <aside style="border-left: 5px solid #333; padding: 12px 16px; margin: 20px 0;">
+      <p>
+        <strong>Forensic Principle:</strong>
+        A conclusion should be supported by evidence, not assumptions.
+      </p>
+    </aside>
+  </section>
+
+  <!-- Part 17 -->
+  <section aria-labelledby="part17">
+    <h2 id="part17">Part 17 — Identify What You Cannot Determine</h2>
+
+    <p>
+      Professional investigators must identify limitations in their findings.
+    </p>
+
+    <p>Create:</p>
+
+    <pre><code>notes/limitations.md</code></pre>
+
+    <p>Consider the following questions:</p>
+
+    <ul>
+      <li>Can you determine the exact person who used the account?</li>
+      <li>Can you prove that a source IP belonged to a specific person?</li>
+      <li>Can you determine whether a file was actually opened?</li>
+      <li>Can you prove that a suspicious script executed?</li>
+      <li>Can you determine whether data was exfiltrated?</li>
+      <li>Are timestamps alone sufficient to establish intent?</li>
+    </ul>
+
+    <p>
+      For each question, answer:
+      <strong>Yes, No, or Cannot Determine</strong>.
+    </p>
+
+    <p>
+      Then explain why.
+    </p>
+  </section>
+
+  <!-- Part 18 -->
+  <section aria-labelledby="part18">
+    <h2 id="part18">Part 18 — Determine the Most Likely Scenario</h2>
+
+    <p>
+      Based on all available evidence, write a preliminary conclusion.
+    </p>
+
+    <h3>Who?</h3>
+    <p>
+      Which account or system appears to have been involved?
+    </p>
+
+    <h3>What?</h3>
+    <p>
+      What activity occurred?
+    </p>
+
+    <h3>When?</h3>
+    <p>
+      When did the important events occur?
+    </p>
+
+    <h3>Where?</h3>
+    <p>
+      Where on the system did the activity occur?
+    </p>
+
+    <h3>How?</h3>
+    <p>
+      What sequence of actions does the evidence support?
+    </p>
+
+    <h3>Why?</h3>
+    <p>
+      Can you determine the motivation or intent?
+    </p>
+
+    <aside style="border-left: 5px solid #333; padding: 12px 16px; margin: 20px 0;">
+      <p>
+        If you cannot determine intent, explicitly state:
+      </p>
+
+      <p>
+        <strong>
+          The available evidence is insufficient to determine intent.
+        </strong>
+      </p>
+
+      <p>
+        Do not invent a motive that is not supported by the evidence.
+      </p>
+    </aside>
+  </section>
+
+  <!-- Part 19 -->
+  <section aria-labelledby="part19">
+    <h2 id="part19">Part 19 — Professional Forensic Report</h2>
+
+    <p>
+      Create your final report:
+    </p>
+
+    <pre><code>report/forensic_report.pdf</code></pre>
+
+    <p>
+      Your report must contain the following sections.
+    </p>
+
+    <h3>1. Executive Summary</h3>
+
+    <p>
+      Provide a 1–2 paragraph overview of your investigation.
+      A non-technical manager should be able to read this section and
+      understand the major findings.
+    </p>
+
+    <h3>2. Scope</h3>
+
+    <p>Explain:</p>
+
+    <ul>
+      <li>What evidence was examined</li>
+      <li>What system was examined</li>
+      <li>What questions the investigation attempted to answer</li>
+      <li>What was outside the scope of the investigation</li>
+    </ul>
+
+    <h3>3. Methodology</h3>
+
+    <p>
+      Explain the tools and techniques used.
+    </p>
+
+    <p>Examples include:</p>
+
+    <ul>
+      <li>The Sleuth Kit</li>
+      <li>SHA-256 verification</li>
+      <li>Filesystem metadata analysis</li>
+      <li>Deleted-file recovery</li>
+      <li>Log analysis</li>
+      <li>Timeline analysis</li>
+      <li>Command-line investigation</li>
+      <li>Evidence correlation</li>
+    </ul>
+
+    <h3>4. Evidence Integrity</h3>
+
+    <p>Document:</p>
+
+    <ul>
+      <li>Evidence filename</li>
+      <li>SHA-256 hash</li>
+      <li>Verification date</li>
+      <li>Working-copy hash</li>
+      <li>Evidence handling process</li>
+    </ul>
+
+    <h3>5. Evidence Examined</h3>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Evidence examined in the investigation
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Evidence</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Type</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Purpose</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Relevant Finding</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;">Evidence image</td>
+          <td style="border: 1px solid #777; padding: 8px;">Disk image</td>
+          <td style="border: 1px solid #777; padding: 8px;">Primary evidence</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;">auth.log</td>
+          <td style="border: 1px solid #777; padding: 8px;">Log</td>
+          <td style="border: 1px solid #777; padding: 8px;">Authentication</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;">bash_history</td>
+          <td style="border: 1px solid #777; padding: 8px;">User artifact</td>
+          <td style="border: 1px solid #777; padding: 8px;">Command activity</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;">network_connections.log</td>
+          <td style="border: 1px solid #777; padding: 8px;">Network artifact</td>
+          <td style="border: 1px solid #777; padding: 8px;">Network connections</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid #777; padding: 8px;">Deleted files</td>
+          <td style="border: 1px solid #777; padding: 8px;">Recovered evidence</td>
+          <td style="border: 1px solid #777; padding: 8px;">User activity</td>
+          <td style="border: 1px solid #777; padding: 8px;">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>6. Timeline</h3>
+
+    <p>
+      Include your finalized incident timeline containing at least 10 significant events.
+    </p>
+
+    <h3>7. Findings</h3>
+
+    <p>
+      Document your major findings.
+    </p>
+
+    <p>Each finding should include:</p>
+
+    <ul>
+      <li><strong>Finding</strong></li>
+      <li><strong>Supporting Evidence</strong></li>
+      <li><strong>Timestamp</strong></li>
+      <li><strong>Interpretation</strong></li>
+      <li><strong>Confidence Level</strong></li>
+    </ul>
+
+    <h3>8. Incident Reconstruction</h3>
+
+    <p>
+      Write a chronological narrative explaining what most likely happened.
+    </p>
+
+    <p>
+      Connect each important event to the evidence supporting it.
+    </p>
+
+    <h3>9. Evidence of Deleted Activity</h3>
+
+    <p>Explain:</p>
+
+    <ul>
+      <li>What was deleted</li>
+      <li>What was recovered</li>
+      <li>What the recovered evidence indicates</li>
+      <li>Why the evidence is significant</li>
+    </ul>
+
+    <h3>10. Limitations</h3>
+
+    <p>
+      Explain what cannot be determined from the available evidence.
+    </p>
+
+    <h3>11. Conclusion</h3>
+
+    <p>
+      Summarize the investigation and directly answer the investigation questions.
+    </p>
+
+    <h3>12. Recommendations</h3>
+
+    <p>
+      Provide reasonable recommendations based on your findings.
+    </p>
+
+    <p>Examples may include:</p>
+
+    <ul>
+      <li>Reset potentially compromised credentials.</li>
+      <li>Review SSH configuration.</li>
+      <li>Enable stronger authentication.</li>
+      <li>Improve centralized logging.</li>
+      <li>Preserve additional systems for investigation.</li>
+      <li>Review access controls.</li>
+      <li>Monitor suspicious network connections.</li>
+    </ul>
+
+    <p>
+      Do not recommend actions unrelated to your findings.
+    </p>
+  </section>
+
+  <!-- Part 20 -->
+  <section aria-labelledby="part20">
+    <h2 id="part20">Part 20 — Required Screenshots</h2>
+
+    <p>
+      Include screenshots demonstrating your work.
+    </p>
+
+    <p>At minimum, include:</p>
+
+    <ol>
+      <li>Evidence hash verification</li>
+      <li><code>img_stat</code></li>
+      <li><code>mmls</code> partition analysis</li>
+      <li>Filesystem analysis</li>
+      <li>Timeline generation</li>
+      <li>Authentication evidence</li>
+      <li>Network evidence</li>
+      <li>Deleted-file evidence</li>
+      <li>Important artifact analysis</li>
+      <li>Final incident timeline</li>
+    </ol>
+
+    <h3>Accessibility Requirement</h3>
+
+    <p>
+      Screenshots <strong>cannot be the only explanation</strong> of your work.
+    </p>
+
+    <p>
+      For every screenshot, provide written text explaining:
+    </p>
+
+    <ul>
+      <li>What is shown</li>
+      <li>What command or tool was used</li>
+      <li>What evidence is important</li>
+      <li>Why the evidence matters</li>
+    </ul>
+
+    <p>
+      This allows someone who cannot see the screenshot to understand the
+      evidence and your interpretation.
+    </p>
+  </section>
+
+  <!-- Part 21 -->
+  <section aria-labelledby="part21">
+    <h2 id="part21">Part 21 — Investigation Questions</h2>
+
+    <p>Answer all of the following questions in your report.</p>
+
+    <ol>
+      <li>What is the earliest significant event you identified?</li>
+
+      <li>What is the latest significant event?</li>
+
+      <li>Which user account appears to be involved?</li>
+
+      <li>Was there evidence of remote access?</li>
+
+      <li>Was there evidence of privilege escalation?</li>
+
+      <li>Were files deleted?</li>
+
+      <li>What evidence connects the deleted files to other activity?</li>
+
+      <li>Was there evidence of credential access?</li>
+
+      <li>Was there evidence of network communication related to the activity?</li>
+
+      <li>
+        Can you prove that data was exfiltrated?
+        Explain your answer.
+      </li>
+
+      <li>What is the strongest piece of evidence in this investigation?</li>
+
+      <li>What is the weakest or most ambiguous piece of evidence?</li>
+
+      <li>
+        What additional evidence would you want if you were conducting a real investigation?
+      </li>
+    </ol>
+  </section>
+
+  <!-- Part 22 -->
+  <section aria-labelledby="part22">
+    <h2 id="part22">Part 22 — Final Evidence Package</h2>
+
+    <p>
+      Your final submission should be organized similarly to the structure below:
+    </p>
+
+    <pre><code>LastName_Forensics_Lab3/
+│
+├── report/
+│   └── forensic_report.pdf
+│
+├── hashes/
+│   └── evidence_hash.txt
+│
+├── timeline/
+│   ├── filesystem_bodyfile.txt
+│   ├── filesystem_timeline.txt
+│   └── incident_timeline.md
+│
+├── output/
+│   ├── bash_history.txt
+│   ├── auth.log
+│   ├── network_connections.log
+│   └── remote_access.log
+│
+├── recovered/
+│   └── recovered_files/
+│
+├── screenshots/
+│   ├── 01_hash_verification.png
+│   ├── 02_img_stat.png
+│   ├── 03_partition_analysis.png
+│   ├── 04_filesystem.png
+│   ├── 05_timeline.png
+│   ├── 06_authentication.png
+│   ├── 07_network.png
+│   ├── 08_deleted_files.png
+│   ├── 09_artifact.png
+│   └── 10_final_timeline.png
+│
+└── notes/
+    ├── investigation_notes.md
+    └── limitations.md</code></pre>
+  </section>
+
+  <!-- Submission -->
+  <section aria-labelledby="submission">
+    <h2 id="submission">Submission Requirements</h2>
+
+    <p>
+      Submit <strong>one ZIP file</strong> to Canvas:
+    </p>
+
+    <pre><code>LastName_Forensics_Lab3.zip</code></pre>
+
+    <p>Your submission must contain:</p>
+
+    <ul>
+      <li>Professional forensic report PDF</li>
+      <li>Evidence hash</li>
+      <li>Filesystem timeline</li>
+      <li>Incident timeline</li>
+      <li>Investigation notes</li>
+      <li>Supporting command output</li>
+      <li>Recovered evidence</li>
+      <li>Required screenshots</li>
+      <li>Answers to all investigation questions</li>
+    </ul>
+
+    <aside style="border-left: 5px solid #333; padding: 12px 16px; margin: 20px 0;">
+      <p>
+        <strong>Do not submit the instructor's original evidence image</strong>
+        unless your instructor specifically requests it.
+      </p>
+    </aside>
+  </section>
+
+  <!-- Rubric -->
+  <section aria-labelledby="rubric">
+    <h2 id="rubric">Grading Rubric — 100 Points</h2>
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <caption style="text-align: left; font-weight: bold; margin-bottom: 8px;">
+        Lab 3 grading rubric
+      </caption>
+
+      <thead>
+        <tr>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Category</th>
+          <th scope="col" style="border: 1px solid #777; padding: 8px;">Points</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Evidence Integrity &amp; Hash Verification
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Filesystem Timeline
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Artifact Analysis
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Authentication &amp; User Activity
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Network / Remote Activity
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Deleted Evidence Analysis
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Evidence Correlation
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">15</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Incident Reconstruction
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Professional Forensic Report
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">10</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            Evidence Documentation &amp; Accessibility
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">5</td>
+        </tr>
+
+        <tr>
+          <th scope="row" style="border: 1px solid #777; padding: 8px;">
+            <strong>Total</strong>
+          </th>
+          <td style="border: 1px solid #777; padding: 8px;">
+            <strong>100</strong>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Investigator Challenge -->
+  <section aria-labelledby="challenge">
+    <h2 id="challenge">Investigator's Challenge</h2>
+
+    <p>
+      For the final part of the lab, imagine that you are presenting your findings
+      to someone who has <strong>never taken a cybersecurity course</strong>.
+    </p>
+
+    <p>
+      You should be able to explain the investigation without simply saying:
+    </p>
+
+    <blockquote>
+      <p>
+        "The log says this, so that's what happened."
+      </p>
+    </blockquote>
+
+    <p>
+      Instead, explain the relationship between multiple sources of evidence:
+    </p>
+
+    <blockquote>
+      <p>
+        "The log shows X. The filesystem shows Y. The user activity shows Z.
+        Because these independent pieces of evidence occur within the same
+        timeframe, the evidence supports the conclusion that..."
+      </p>
+    </blockquote>
+
+    <p>
+      This is the difference between <strong>finding artifacts</strong> and
+      <strong>conducting a forensic investigation</strong>.
+    </p>
+  </section>
+
+  <!-- Final Reflection -->
+  <section aria-labelledby="final-question">
+    <h2 id="final-question">Final Investigator Question</h2>
+
+    <p>
+      At the end of your report, answer the following:
+    </p>
+
+    <blockquote>
+      <p>
+        <strong>
+          If this were a real incident rather than a classroom exercise,
+          what additional evidence would you collect before making a final determination?
+        </strong>
+      </p>
+    </blockquote>
+
+    <p>
+      Think like a professional investigator.
+      The goal is not to prove your theory. The goal is to determine what the
+      evidence can actually support.
+    </p>
+  </section>
+
+  <!-- Accessibility Note -->
+  <footer>
+    <hr>
+
+    <aside aria-label="Accessibility and student support information"
+           style="padding: 16px; margin-top: 20px;">
+      <h2>Accessibility &amp; Student Support</h2>
+
+      <p>
+        This assignment is designed to support different learning needs.
+        Written explanations are required in addition to screenshots so that
+        the investigation can be understood without relying exclusively on
+        visual information.
+      </p>
+
+      <p>
+        If you encounter an accessibility barrier, technical problem, or
+        difficulty understanding the forensic concepts, contact your instructor
+        before the submission deadline.
+      </p>
+    </aside>
+  </footer>
+
+</div>
