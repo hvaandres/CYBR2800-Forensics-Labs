@@ -90,9 +90,16 @@
   <h2>Lab Architecture</h2>
 
   <p>
-    You will use two computing environments. Your <strong>Mac</strong> will be used as your
-    local work and acquisition computer. Your <strong>Ubuntu virtual machine</strong> will
-    be used as your forensic analysis workstation.
+    You will use two computing environments. Your <strong>Mac or Windows computer</strong>
+    will be used as your local work and acquisition computer. Your
+    <strong>Ubuntu virtual machine</strong> will be used as your forensic analysis
+    workstation.
+  </p>
+
+  <p>
+    Instructions in this lab are provided for both <strong>macOS</strong> and
+    <strong>Windows</strong>. Follow the instructions that match your operating system,
+    and skip the instructions written for the other platform.
   </p>
 
   <table style="width: 100%; border-collapse: collapse; margin: 1.5em 0;">
@@ -112,7 +119,7 @@
     <tbody>
       <tr>
         <td style="border: 1px solid #999; padding: 10px;">
-          macOS computer
+          macOS or Windows computer
         </td>
         <td style="border: 1px solid #999; padding: 10px;">
           Local workstation and approved evidence acquisition environment
@@ -152,7 +159,7 @@
 
   <ol>
     <li>
-      <strong>Do not image your personal Mac.</strong>
+      <strong>Do not image your personal computer.</strong>
       You will work with an instructor-approved evidence source.
     </li>
     <li>
@@ -409,36 +416,66 @@ exiftool -ver</code></pre>
     </p>
   </aside>
 
-  <h2>Part 4: Identify the Approved Evidence Source on macOS</h2>
+  <h2>Part 4: Identify the Approved Evidence Source</h2>
 
   <p>
     Your instructor will provide an approved evidence source. This may be a dedicated
     evidence disk, removable media, or another controlled source.
   </p>
 
-  <p>On macOS, list available disks:</p>
+  <h3>macOS</h3>
+
+  <p>List available disks:</p>
 
   <pre><code>diskutil list</code></pre>
 
-  <p>
-    Carefully identify the evidence device using the information provided by your instructor.
-  </p>
-
-  <aside aria-label="Critical warning about disk selection" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+  <aside aria-label="Critical warning about disk selection on macOS" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
     <p>
       <strong>Critical Warning:</strong>
       Do not blindly use an example such as <code>/dev/disk4</code>.
-      Your computer may assign a different device identifier.
-      Selecting the wrong device can result in data loss.
+      Your computer may assign a different device identifier. This list also includes
+      your Mac's own internal disk (usually containing "Macintosh HD"). Selecting the
+      wrong device can permanently destroy your own data.
     </p>
   </aside>
+
+  <h3>Windows</h3>
+
+  <p>
+    Open <strong>PowerShell as Administrator</strong> and list available disks:
+  </p>
+
+  <pre><code>Get-Disk</code></pre>
+
+  <p>
+    You can also review more detail, including partition layout and drive letters,
+    using Disk Management:
+  </p>
+
+  <pre><code>diskmgmt.msc</code></pre>
+
+  <aside aria-label="Critical warning about disk selection on Windows" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+    <p>
+      <strong>Critical Warning:</strong>
+      <code>Get-Disk</code> lists every disk attached to your computer, including
+      <strong>Disk 0</strong>, which is almost always your Windows system disk. Do not
+      select your system disk. Confirm the evidence disk using its size before
+      proceeding. Selecting the wrong disk number in later steps can permanently
+      destroy your own data.
+    </p>
+  </aside>
+
+  <p>
+    Carefully identify the evidence device using the information provided by your
+    instructor, regardless of which operating system you are using.
+  </p>
 
   <p>
     Record the following information in your investigation notes:
   </p>
 
   <ul>
-    <li>Device identifier</li>
+    <li>Device identifier (e.g., <code>/dev/diskN</code> on macOS or <code>Disk N</code> on Windows)</li>
     <li>Device size</li>
     <li>Device name</li>
     <li>Date and time of acquisition</li>
@@ -459,16 +496,44 @@ exiftool -ver</code></pre>
 
   <pre><code>suspect.dd</code></pre>
 
+  <h3>macOS</h3>
+
   <p>
-    If your instructor directs you to use <code>dc3dd</code>, the general structure of
-    the command is:
+    <code>dc3dd</code> is a Linux tool and is not available on macOS. Acquire the image
+    using the built-in <code>dd</code> command instead:
   </p>
 
-  <pre><code>sudo dc3dd if=SOURCE_DEVICE of=suspect.dd hash=sha256 log=acquisition.log</code></pre>
+  <pre><code>sudo dd if=/dev/rSOURCE_DEVICE of=suspect.dd bs=4m 2&gt; acquisition.log</code></pre>
 
   <p>
     <strong>Do not execute this command until you have confirmed the correct source device.</strong>
-    Replace <code>SOURCE_DEVICE</code> with the device identifier provided for your lab.
+    Replace <code>SOURCE_DEVICE</code> with the device identifier provided for your lab
+    (use the raw device, e.g. <code>/dev/rdisk4</code>, for faster imaging).
+  </p>
+
+  <h3>Windows</h3>
+
+  <p>
+    Windows does not include a built-in disk-imaging command. Use one of the following
+    instructor-approved options:
+  </p>
+
+  <ul>
+    <li>
+      <strong>FTK Imager (recommended):</strong> Use the free FTK Imager tool to create
+      a raw (dd) image of the evidence disk. FTK Imager calculates the SHA-256 hash
+      automatically and saves a verification report alongside the image.
+    </li>
+    <li>
+      <strong>WSL2 with a Linux tool:</strong> If approved by your instructor, attach
+      the evidence device to WSL2 (e.g., using <code>usbipd-win</code>) and run the same
+      <code>dc3dd</code>/<code>dd</code> commands shown for macOS/Linux from inside WSL2.
+    </li>
+  </ul>
+
+  <p>
+    Whichever tool you use, save an acquisition log noting the tool and version used,
+    the source device, the output filename, and the resulting hash.
   </p>
 
   <p>
@@ -488,11 +553,28 @@ exiftool -ver</code></pre>
     Calculate the SHA-256 hash of the forensic image.
   </p>
 
+  <h3>macOS</h3>
+
   <pre><code>shasum -a 256 suspect.dd</code></pre>
 
   <p>Save the hash:</p>
 
   <pre><code>shasum -a 256 suspect.dd &gt; ~/forensics/hashes/evidence_sha256.txt</code></pre>
+
+  <h3>Windows</h3>
+
+  <p>Using PowerShell:</p>
+
+  <pre><code>Get-FileHash suspect.dd -Algorithm SHA256</code></pre>
+
+  <p>Save the hash to a file:</p>
+
+  <pre><code>Get-FileHash suspect.dd -Algorithm SHA256 | Out-File evidence_sha256.txt</code></pre>
+
+  <p>
+    If you used FTK Imager, you may instead use the hash value from its generated
+    verification report.
+  </p>
 
   <p>
     Verify that the hash file contains the expected information:
@@ -504,7 +586,15 @@ exiftool -ver</code></pre>
 
   <p>
     Transfer the forensic image and acquisition documentation to your Ubuntu forensic
-    workstation.
+    workstation. Both macOS and Windows 10/11 include a built-in <code>scp</code>
+    command you can run from Terminal (macOS) or PowerShell (Windows):
+  </p>
+
+  <pre><code>scp suspect.dd USER@UBUNTU_HOST:~/forensics/evidence/
+scp acquisition.log USER@UBUNTU_HOST:~/forensics/logs/</code></pre>
+
+  <p>
+    Windows users may alternatively use a GUI tool such as WinSCP to transfer the files.
   </p>
 
   <p>
@@ -552,7 +642,7 @@ sha256sum suspect.dd</code></pre>
     </thead>
     <tbody>
       <tr>
-        <td style="border:1px solid #999; padding:10px;">macOS / Acquisition</td>
+        <td style="border:1px solid #999; padding:10px;">macOS or Windows / Acquisition</td>
         <td style="border:1px solid #999; padding:10px;">Your hash</td>
         <td style="border:1px solid #999; padding:10px;">Yes / No</td>
       </tr>
