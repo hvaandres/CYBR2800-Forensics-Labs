@@ -33,7 +33,7 @@ def require_root():
     if os.geteuid() != 0:
         raise SystemExit(
             "ERROR: This script must be run as root.\n"
-            "Run it with: sudo ./cybr2800_forensic_evidence_lab3.py"
+            "Run it with: sudo python3 cybr2800_forensic_evidence_lab4.py"
         )
 
 

@@ -5,6 +5,10 @@
 - `lab02.html` — the student lab handout (HTML fragment, ready to paste into Canvas).
 - `cybr2800_forensic_evidence.py` — instructor script that generates the evidence image.
 
+> **Numbering:** this folder is `lab02` (course week), but the handout inside is titled
+> **Lab 1 of 3** and its evidence image is `CYBR2800_Lab1_Evidence.dd`. See the root
+> `INSTRUCTOR_GUIDE.md` for the full folder-to-lab mapping.
+
 ## `cybr2800_forensic_evidence.py`
 
 **Description:** Builds a 256 MB forensic disk image containing a simulated Linux

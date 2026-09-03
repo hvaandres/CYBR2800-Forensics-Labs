@@ -8,26 +8,43 @@ All labs use free, open-source, command-line tools (mainly **The Sleuth Kit**) o
 Ubuntu analysis VM. Nothing here attacks real systems — the evidence is synthetic and
 built locally.
 
+> **Running this course?** Read **[`INSTRUCTOR_GUIDE.md`](INSTRUCTOR_GUIDE.md)** first. It
+> covers building and freezing the master images, the pre-class validation checks, what to
+> distribute versus withhold, class pacing, grading guidance, and troubleshooting.
+
 ## Repository Layout
 
 ```
 CYBR2800-Forensics-Labs/
+├── README.md
+├── INSTRUCTOR_GUIDE.md
 └── hacking-thursdays/
     ├── lab02/
     │   ├── README.md
     │   ├── lab02.html
     │   └── cybr2800_forensic_evidence.py
-    └── lab03/
+    ├── lab03/
+    │   ├── README.md
+    │   ├── lab03.html
+    │   └── create_cybr2800_evidence.py
+    └── lab04/
         ├── README.md
-        ├── lab03.html
-        └── create_cybr2800_evidence.py
+        ├── lab04.html
+        └── cybr2800_forensic_evidence_lab4.py
 ```
 
 Each lab folder has its own `README.md` explaining what that lab's Python script does and
 how to run it.
 
-> Note on numbering: the folders are numbered `lab02` / `lab03` by week, but the handouts
-> inside are titled **Lab 1** and **Lab 2** of the 3-lab forensics sequence.
+> **Note on numbering:** the folders are numbered by course week, but the handouts inside
+> are numbered by position in the 3-lab sequence:
+>
+> - `lab02/` → handout **Lab 1 of 3** → `CYBR2800_Lab1_Evidence.dd`
+> - `lab03/` → handout **Lab 2 of 3** → `CYBR2800_Lab2_Evidence.dd`
+> - `lab04/` → handout **Lab 3 of 3** → `CYBR2800_Lab3_Evidence.dd`
+>
+> Student-facing material uses the sequence number consistently; the week number never
+> appears in it.
 
 ---
 
@@ -84,12 +101,34 @@ producing investigation notes, an evidence table, screenshots, and preliminary f
 
 ---
 
+## `hacking-thursdays/lab04` — Timeline Analysis, Incident Reconstruction & Reporting
+
+**What students do:** stop hunting individual files and reconstruct the incident — what
+happened, when, how, and what evidence supports it. Roughly 4–6 hours, 100 points.
+
+Builds a forensic timeline from filesystem metadata, correlates it against system and
+application logs, identifies suspicious user activity, reconstructs the sequence of events,
+and produces a professional forensic report. This is where the ambiguity deliberately left
+open in Lab 2 gets resolved through correlation rather than assumption.
+
+**Files**
+
+- `lab04.html` — the student handout, fragment-style HTML with inline styling. Includes the
+  timeline methodology, correlation steps, reporting structure, and grading rubric.
+- `cybr2800_forensic_evidence_lab4.py` — instructor script that builds the Lab 3 evidence
+  image. Same requirements (Linux, root, run inside the Ubuntu VM). Adds
+  remote-access, application, and maintenance logs on top of the Lab 2 artifact set, plus
+  several deleted files and an evidence manifest. Outputs `CYBR2800_Lab3_Evidence.dd`. See
+  `hacking-thursdays/lab04/README.md` for run instructions.
+
+---
+
 ## Using the Generator Scripts
 
-**Both scripts must run inside the Ubuntu VM, not on macOS.** They are Linux-only (they use
-`mkfs.ext4` and loop mounts), require root, and write to `/mnt` and `/tmp`. Each writes its
-`.dd` image to the current working directory, so run it from the folder where you want the
-image to land.
+**All three scripts must run inside the Ubuntu VM, not on macOS.** They are Linux-only (they
+use `mkfs.ext4` and loop mounts), require root, and write to `/mnt` and `/tmp`. Each writes
+its `.dd` image to the current working directory, so run it from the folder where you want
+the image to land.
 
 ```bash
 sudo apt update
@@ -103,6 +142,9 @@ The generated `.dd` file is the **master copy**. Distribute a duplicate to stude
 with the SHA-256 value, and keep the master unmodified.
 
 ## The Scenario in the Evidence
+
+> **Spoiler — instructor reference only.** Do not paste this section into Canvas or share
+> it with students; it gives away the indicators they are meant to discover.
 
 Every image tells the same story so the labs build on each other:
 

@@ -3,9 +3,13 @@
 ## Files
 
 - `lab04.html` — the student lab handout (HTML fragment, ready to paste into Canvas).
-- `cybr2800_forensic_evidence_lab3.py` — instructor script that generates the evidence image.
+- `cybr2800_forensic_evidence_lab4.py` — instructor script that generates the evidence image.
 
-## `cybr2800_forensic_evidence_lab3.py`
+> **Numbering:** this folder is `lab04` (course week), but the handout inside is titled
+> **Lab 3 of 3** and its evidence image is `CYBR2800_Lab3_Evidence.dd`. See the root
+> `INSTRUCTOR_GUIDE.md` for the full folder-to-lab mapping.
+
+## `cybr2800_forensic_evidence_lab4.py`
 
 **Description:** Builds the 256 MB ext4 forensic image used in Lab 3 — user documents,
 bash and browser history, SSH config, auth/system/network/remote-access/application/
@@ -38,7 +42,7 @@ the current working directory:
 sudo apt update
 sudo apt install e2fsprogs coreutils
 
-sudo python3 cybr2800_forensic_evidence_lab3.py
+sudo python3 cybr2800_forensic_evidence_lab4.py
 ```
 
 The generated `.dd` file is the **master copy**. Keep it unmodified and give students a

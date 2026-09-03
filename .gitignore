@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+env/
+
+# ---------------------------------------------------------------
+# Generated forensic evidence
+#
+# The generator scripts write these into the current working
+# directory. They are large, binary, and non-reproducible (each
+# build gets a new filesystem UUID and new timestamps, so each
+# build has a different SHA-256). Keep the master out of git and
+# distribute it through the LMS instead.
+# ---------------------------------------------------------------
+*.dd
+*.dd.sha256
+*.dd.gz
+*_manifest.txt
+
+# Generator scratch directories
+lab*_build/
+
+# ---------------------------------------------------------------
+# Instructor-only material
+#
+# ANSWER_KEY.md contains deleted filenames, inode numbers, and the
+# full indicator list. It must never reach a student-visible
+# branch or a repo students can clone.
+# ---------------------------------------------------------------
+ANSWER_KEY.md
+**/ANSWER_KEY.md
+*.answers.md
+
+# ---------------------------------------------------------------
+# OS / editor noise
+# ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/

@@ -5,6 +5,10 @@
 - `lab03.html` — the student lab handout (HTML fragment, ready to paste into Canvas).
 - `create_cybr2800_evidence.py` — instructor script that generates the evidence image.
 
+> **Numbering:** this folder is `lab03` (course week), but the handout inside is titled
+> **Lab 2 of 3** and its evidence image is `CYBR2800_Lab2_Evidence.dd`. See the root
+> `INSTRUCTOR_GUIDE.md` for the full folder-to-lab mapping.
+
 ## `create_cybr2800_evidence.py`
 
 **Description:** Enhanced version of the Lab 02 generator. Builds the same 256 MB ext4
