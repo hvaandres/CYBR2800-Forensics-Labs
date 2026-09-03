@@ -1,28 +1,109 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
+import stat
 import subprocess
 import shutil
-import tempfile
 from pathlib import Path
-from datetime import datetime
 
 IMAGE_NAME = "CYBR2800_Lab1_Evidence.dd"
 IMAGE_SIZE_MB = 256
+PARTITION_START = "1MiB"
+FS_LABEL = "CYBR2800L1"
 MOUNT_POINT = "/mnt/cybr2800_lab1_evidence"
 
 BASE_DIR = Path("/tmp/cybr2800_lab1_evidence_build")
 EVIDENCE_DIR = BASE_DIR / "evidence"
 
-def run(command):
+def run(command, **kwargs):
     print(f"\n[+] Running: {' '.join(command)}")
-    subprocess.run(command, check=True)
+    subprocess.run(command, check=True, **kwargs)
+
+def run_output(command):
+    print(f"\n[+] Running: {' '.join(command)}")
+    return subprocess.check_output(command, text=True).strip()
 
 def write_file(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Build the CYBR 2800 Lab 1 forensic evidence image."
+    )
+    parser.add_argument(
+        "--write-to-device",
+        metavar="DEVICE",
+        help=(
+            "Optional path to a block device (e.g. /dev/sdb) to clone the finished "
+            "master image onto, so it can be handed to students as a physical "
+            "evidence source (matches Part 4-5 of the lab, which images a real "
+            "device with diskutil/dc3dd)."
+        ),
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip the confirmation prompt when writing to --write-to-device.",
+    )
+    return parser.parse_args()
+
+def write_to_device(image_path, device, skip_confirm):
+    device_path = Path(device)
+
+    if not device_path.exists():
+        print(f"[-] Device not found: {device}")
+        return False
+
+    mode = os.stat(device_path).st_mode
+    if not stat.S_ISBLK(mode):
+        print(f"[-] {device} is not a block device. Refusing to write.")
+        return False
+
+    try:
+        device_size = int(run_output(["blockdev", "--getsize64", str(device_path)]))
+    except (subprocess.CalledProcessError, ValueError):
+        print(f"[-] Could not determine the size of {device}.")
+        return False
+
+    image_size = image_path.stat().st_size
+
+    print(f"\nTarget device:     {device}")
+    print(f"Device size:       {device_size / (1024 * 1024):.1f} MB")
+    print(f"Master image size: {image_size / (1024 * 1024):.1f} MB")
+
+    if device_size < image_size:
+        print("[-] Device is smaller than the master image. Refusing to write.")
+        return False
+
+    if not skip_confirm:
+        answer = input(f"\nThis will ERASE ALL DATA on {device}. Type YES to continue: ")
+        if answer.strip() != "YES":
+            print("[-] Aborted. Device was not modified.")
+            return False
+
+    print(f"[+] Unmounting any mounted partitions on {device}...")
+    try:
+        lsblk_output = run_output(["lsblk", "-ln", "-o", "NAME,MOUNTPOINT", device])
+        for line in lsblk_output.splitlines():
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                name, mountpoint = parts
+                subprocess.run(["umount", f"/dev/{name}"], check=False)
+    except subprocess.CalledProcessError:
+        pass
+
+    run(["dd", f"if={image_path}", f"of={device}", "bs=4M", "conv=fsync", "status=progress"])
+    run(["sync"])
+
+    print(f"\n[+] Master image successfully cloned to {device}.")
+    print("    This device can now be handed to a student as the approved")
+    print("    evidence source for macOS acquisition (diskutil / dc3dd).")
+    return True
+
 def main():
+    args = parse_args()
 
     if os.geteuid() != 0:
         print("[-] Please run this script with sudo.")
@@ -37,7 +118,9 @@ def main():
     # 1. Check required tools
     # ------------------------------------------------------------
 
-    required = ["dd", "mkfs.ext4", "mount", "umount", "sha256sum"]
+    required = ["dd", "parted", "losetup", "mkfs.ext4", "mount", "umount", "sha256sum"]
+    if args.write_to_device:
+        required += ["blockdev", "lsblk"]
 
     for tool in required:
         if shutil.which(tool) is None:
@@ -332,102 +415,111 @@ ssh backupadmin@10.10.20.25
     ])
 
     # ------------------------------------------------------------
-    # 6. Format image as ext4
+    # 6. Create a partition table with a single primary partition
+    #
+    # The lab requires students to run `mmls` and identify a real
+    # partition scheme/start sector, then pass that offset to
+    # `fsstat`/`fls`/`icat` with `-o`. A raw image formatted directly
+    # with mkfs (no partition table) has none of that, so mmls would
+    # fail to find a valid partition/volume system.
     # ------------------------------------------------------------
 
-    print("[+] Creating ext4 filesystem...")
+    print("[+] Creating MBR partition table...")
 
-    run([
-        "mkfs.ext4",
-        "-F",
-        "-L",
-        "CYBR2800L1",
-        str(image_path)
-    ])
+    run(["parted", "--script", str(image_path), "mklabel", "msdos"])
+    run(["parted", "--script", str(image_path), "mkpart", "primary", "ext4", PARTITION_START, "100%"])
 
     # ------------------------------------------------------------
-    # 7. Mount image
+    # 7. Attach the image as a loop device with partition scanning
+    #    so the partition appears as its own device node.
     # ------------------------------------------------------------
 
-    Path(MOUNT_POINT).mkdir(exist_ok=True)
+    print("[+] Attaching image as a loop device...")
 
-    print("[+] Mounting evidence image...")
+    loop_dev = run_output(["losetup", "--find", "--show", "-P", str(image_path)])
+    partition_dev = f"{loop_dev}p1"
 
-    run([
-        "mount",
-        "-o",
-        "loop",
-        str(image_path),
-        MOUNT_POINT
-    ])
+    try:
+        # ------------------------------------------------------------
+        # 8. Format the partition as ext4
+        # ------------------------------------------------------------
+
+        print("[+] Creating ext4 filesystem on the partition...")
+
+        run(["mkfs.ext4", "-F", "-L", FS_LABEL, partition_dev])
+
+        # ------------------------------------------------------------
+        # 9. Mount the partition
+        # ------------------------------------------------------------
+
+        Path(MOUNT_POINT).mkdir(exist_ok=True)
+
+        print("[+] Mounting evidence partition...")
+
+        run(["mount", partition_dev, MOUNT_POINT])
+
+        try:
+            # ------------------------------------------------------------
+            # 10. Copy evidence into mounted filesystem
+            # ------------------------------------------------------------
+
+            print("[+] Copying evidence into image...")
+
+            run([
+                "cp",
+                "-a",
+                str(EVIDENCE_DIR) + "/.",
+                MOUNT_POINT
+            ])
+
+            # ------------------------------------------------------------
+            # 11. Sync changes
+            # ------------------------------------------------------------
+
+            print("[+] Syncing filesystem...")
+
+            run(["sync"])
+
+            # ------------------------------------------------------------
+            # 12. Remove selected files so students can recover them
+            # ------------------------------------------------------------
+
+            print("[+] Creating deleted-file evidence...")
+
+            deleted_files = [
+                f"{MOUNT_POINT}/home/alex/Downloads/temporary_credentials.txt",
+                f"{MOUNT_POINT}/home/alex/Downloads/backup_notes.txt",
+                f"{MOUNT_POINT}/home/alex/Downloads/suspicious_commands.txt"
+            ]
+
+            for file in deleted_files:
+                if os.path.exists(file):
+                    os.remove(file)
+
+            run(["sync"])
+
+        finally:
+            print("[+] Unmounting evidence partition...")
+            run(["umount", MOUNT_POINT])
+
+    finally:
+        print("[+] Detaching loop device...")
+        subprocess.run(["losetup", "-d", loop_dev], check=False)
 
     # ------------------------------------------------------------
-    # 8. Copy evidence into mounted filesystem
-    # ------------------------------------------------------------
-
-    print("[+] Copying evidence into image...")
-
-    run([
-        "cp",
-        "-a",
-        str(EVIDENCE_DIR) + "/.",
-        MOUNT_POINT
-    ])
-
-    # ------------------------------------------------------------
-    # 9. Sync changes
-    # ------------------------------------------------------------
-
-    print("[+] Syncing filesystem...")
-
-    run(["sync"])
-
-    # ------------------------------------------------------------
-    # 10. Remove selected files so students can recover them
-    # ------------------------------------------------------------
-
-    print("[+] Creating deleted-file evidence...")
-
-    deleted_files = [
-        f"{MOUNT_POINT}/home/alex/Downloads/temporary_credentials.txt",
-        f"{MOUNT_POINT}/home/alex/Downloads/backup_notes.txt",
-        f"{MOUNT_POINT}/home/alex/Downloads/suspicious_commands.txt"
-    ]
-
-    for file in deleted_files:
-        if os.path.exists(file):
-            os.remove(file)
-
-    run(["sync"])
-
-    # ------------------------------------------------------------
-    # 11. Unmount image
-    # ------------------------------------------------------------
-
-    print("[+] Unmounting evidence image...")
-
-    run([
-        "umount",
-        MOUNT_POINT
-    ])
-
-    # ------------------------------------------------------------
-    # 12. Calculate SHA-256 hash
+    # 13. Calculate SHA-256 hash of the finished master image
     # ------------------------------------------------------------
 
     print("[+] Calculating SHA-256 hash...")
 
-    hash_result = subprocess.check_output(
-        ["sha256sum", str(image_path)],
-        text=True
-    ).strip()
+    hash_result = run_output(["sha256sum", str(image_path)])
 
     hash_file = Path.cwd() / f"{IMAGE_NAME}.sha256"
 
     hash_file.write_text(hash_result + "\n")
 
     # ------------------------------------------------------------
-    # 13. Clean temporary files
+    # 14. Clean temporary files
     # ------------------------------------------------------------
 
     print("[+] Cleaning temporary build files...")
@@ -435,7 +527,16 @@ ssh backupadmin@10.10.20.25
     shutil.rmtree(BASE_DIR)
 
     # ------------------------------------------------------------
-    # 14. Final output
+    # 15. Optionally clone the master image onto a physical device
+    #     so it can be handed to a student as the approved evidence
+    #     source for macOS acquisition (diskutil / dc3dd).
+    # ------------------------------------------------------------
+
+    if args.write_to_device:
+        write_to_device(image_path, args.write_to_device, args.yes)
+
+    # ------------------------------------------------------------
+    # 16. Final output
     # ------------------------------------------------------------
 
     print("\n" + "=" * 70)
@@ -452,6 +553,7 @@ ssh backupadmin@10.10.20.25
     print(f"  {hash_file}")
 
     print("\nThe image contains:")
+    print("  - An MBR partition table with a single ext4 partition")
     print("  - User documents")
     print("  - Bash history")
     print("  - Browser history")
@@ -468,6 +570,13 @@ ssh backupadmin@10.10.20.25
     print("  Preserve this original image.")
     print("  Students should work from a verified copy.")
     print("  Do not modify the original evidence image.")
+
+    if not args.write_to_device:
+        print("\nNEXT STEP:")
+        print("  To hand this off as a physical evidence source for the")
+        print("  macOS acquisition steps (Part 4-5), clone it onto a blank")
+        print("  USB device per student, e.g.:")
+        print(f"    sudo python3 {Path(__file__).name} --write-to-device /dev/sdX")
 
 if __name__ == "__main__":
     main()
