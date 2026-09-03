@@ -42,6 +42,8 @@ from pathlib import Path
 
 IMAGE_NAME = "CYBR2800_Lab2_Evidence.dd"
 IMAGE_SIZE_MB = 256
+PARTITION_START = "1MiB"
+FS_LABEL = "CYBR2800L2"
 
 MOUNT_POINT = Path("/mnt/cybr2800_lab2_evidence")
 BUILD_DIR = Path("/tmp/cybr2800_lab2_evidence_build")
@@ -52,6 +54,10 @@ SCRIPT_DIR = Path.cwd()
 IMAGE_PATH = SCRIPT_DIR / IMAGE_NAME
 HASH_PATH = SCRIPT_DIR / f"{IMAGE_NAME}.sha256"
 MANIFEST_PATH = SCRIPT_DIR / "CYBR2800_Lab2_Evidence_manifest.txt"
+
+# Tracks the loop device currently attached to IMAGE_PATH, if any,
+# so it can be detached during cleanup or on error.
+CURRENT_LOOP_DEV = None
 
 
 # ============================================================
@@ -71,6 +77,18 @@ def run(command, check=True):
     )
 
     return result
+
+
+def run_output(command):
+    """Run a system command and capture its output."""
+
+    print()
+    print("[+] " + " ".join(str(x) for x in command))
+
+    return subprocess.check_output(
+        command,
+        text=True
+    ).strip()
 
 
 def write_file(path, content):
@@ -103,13 +121,17 @@ def check_tools():
 
     required_tools = [
         "dd",
+        "parted",
+        "losetup",
         "mkfs.ext4",
         "mount",
         "umount",
+        "mountpoint",
         "sha256sum",
         "cp",
         "rm",
-        "sync"
+        "sync",
+        "chmod"
     ]
 
     missing = []
@@ -129,8 +151,47 @@ def check_tools():
         sys.exit(1)
 
 
+def detach_loop_device():
+    """Detach the loop device attached to the image, if any."""
+
+    global CURRENT_LOOP_DEV
+
+    if CURRENT_LOOP_DEV:
+        print(f"[+] Detaching loop device: {CURRENT_LOOP_DEV}")
+        subprocess.run(
+            ["losetup", "-d", CURRENT_LOOP_DEV],
+            check=False
+        )
+        CURRENT_LOOP_DEV = None
+
+
+def detach_stray_loop_devices():
+    """Detach any loop devices left over from a previous, interrupted run."""
+
+    if not IMAGE_PATH.exists():
+        return
+
+    result = subprocess.run(
+        ["losetup", "-j", str(IMAGE_PATH)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False
+    )
+
+    for line in result.stdout.splitlines():
+        loop_dev = line.split(":")[0].strip()
+
+        if loop_dev:
+            print(f"[+] Detaching stray loop device: {loop_dev}")
+            subprocess.run(
+                ["losetup", "-d", loop_dev],
+                check=False
+            )
+
+
 def cleanup_mount():
-    """Unmount the evidence image if mounted."""
+    """Unmount the evidence image and detach its loop device, if active."""
 
     result = subprocess.run(
         ["mountpoint", "-q", str(MOUNT_POINT)],
@@ -145,11 +206,14 @@ def cleanup_mount():
             check=False
         )
 
+    detach_loop_device()
+
 
 def cleanup():
     """Clean temporary resources."""
 
     cleanup_mount()
+    detach_stray_loop_devices()
 
     if BUILD_DIR.exists():
         shutil.rmtree(BUILD_DIR)
@@ -490,6 +554,8 @@ ssh backupadmin@10.10.20.25
 
 def create_image():
 
+    global CURRENT_LOOP_DEV
+
     print()
     print("=" * 70)
     print("CREATING FORENSIC DISK IMAGE")
@@ -509,19 +575,64 @@ def create_image():
     ])
 
     # --------------------------------------------------------
-    # Create ext4 filesystem
+    # Create an MBR partition table with a single primary partition.
+    #
+    # The lab requires students to run `mmls` to identify a real
+    # partition scheme/start sector, then pass that offset to
+    # `fsstat`/`fls`/`istat`/`icat`/`tsk_recover` with `-o`. A raw
+    # image formatted directly with mkfs (no partition table) has
+    # none of that, so mmls would fail to find a valid partition.
+    # --------------------------------------------------------
+
+    run([
+        "parted",
+        "--script",
+        str(IMAGE_PATH),
+        "mklabel",
+        "msdos"
+    ])
+
+    run([
+        "parted",
+        "--script",
+        str(IMAGE_PATH),
+        "mkpart",
+        "primary",
+        "ext4",
+        PARTITION_START,
+        "100%"
+    ])
+
+    # --------------------------------------------------------
+    # Attach the image as a loop device with partition scanning so
+    # the partition appears as its own device node.
+    # --------------------------------------------------------
+
+    loop_dev = run_output([
+        "losetup",
+        "--find",
+        "--show",
+        "-P",
+        str(IMAGE_PATH)
+    ])
+
+    CURRENT_LOOP_DEV = loop_dev
+    partition_dev = f"{loop_dev}p1"
+
+    # --------------------------------------------------------
+    # Create ext4 filesystem on the partition
     # --------------------------------------------------------
 
     run([
         "mkfs.ext4",
         "-F",
         "-L",
-        "CYBR2800L2",
-        str(IMAGE_PATH)
+        FS_LABEL,
+        partition_dev
     ])
 
     # --------------------------------------------------------
-    # Mount image
+    # Mount the partition
     # --------------------------------------------------------
 
     MOUNT_POINT.mkdir(
@@ -531,9 +642,7 @@ def create_image():
 
     run([
         "mount",
-        "-o",
-        "loop",
-        str(IMAGE_PATH),
+        partition_dev,
         str(MOUNT_POINT)
     ])
 
@@ -621,7 +730,7 @@ def create_image():
     finally:
 
         # ----------------------------------------------------
-        # Unmount
+        # Unmount and detach the loop device
         # ----------------------------------------------------
 
         print()

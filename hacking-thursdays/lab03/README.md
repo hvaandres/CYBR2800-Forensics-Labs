@@ -11,7 +11,10 @@
 forensic image (user documents, bash and browser history, SSH config, auth/system/network
 logs, suspicious script, deleted files), and additionally performs pre-flight tool checks,
 safe mount/unmount cleanup, realistic file permissions, an extra remote-access log, and
-writes an evidence manifest.
+writes an evidence manifest. Like the Lab 02 image, the disk image has a real MBR
+partition table with a single ext4 partition (not just a raw ext4 filesystem), so
+`mmls` in Part 5 of the lab finds a real partition and start-sector offset for students
+to use with `-o` in later Sleuth Kit commands.
 
 **Objective:** Produce the verified evidence image students examine in Lab 2 — including
 the hash and manifest they use to prove the evidence was not altered.
@@ -34,10 +37,14 @@ the current working directory:
 
 ```bash
 sudo apt update
-sudo apt install e2fsprogs coreutils
+sudo apt install e2fsprogs coreutils parted util-linux
 
 sudo python3 create_cybr2800_evidence.py
 ```
+
+The script performs a pre-flight check (`check_tools()`) and will tell you exactly
+which command-line tool is missing if one of these packages isn't installed, rather
+than installing anything on your behalf.
 
 The generated `.dd` file is the **master copy**. Keep it unmodified and give students a
 duplicate along with the SHA-256 value from the manifest.
