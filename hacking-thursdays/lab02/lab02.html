@@ -90,16 +90,19 @@
   <h2>Lab Architecture</h2>
 
   <p>
-    You will use two computing environments. Your <strong>Mac or Windows computer</strong>
-    will be used as your local work and acquisition computer. Your
-    <strong>Ubuntu virtual machine</strong> will be used as your forensic analysis
-    workstation.
+    Your <strong>Ubuntu virtual machine</strong> is your forensic analysis workstation and
+    is required for every part of this lab. Depending on the evidence path you choose in
+    the next section, you may also use your <strong>Mac or Windows computer</strong> as an
+    acquisition environment, or a <strong>second Ubuntu virtual machine</strong> as an
+    evidence host.
   </p>
 
   <p>
     Instructions in this lab are provided for both <strong>macOS</strong> and
     <strong>Windows</strong>. Follow the instructions that match your operating system,
-    and skip the instructions written for the other platform.
+    and skip the instructions written for the other platform. Sections labeled with an
+    evidence path (for example, "Path B: macOS") apply only to students who selected that
+    path.
   </p>
 
   <table style="width: 100%; border-collapse: collapse; margin: 1.5em 0;">
@@ -135,10 +138,11 @@
       </tr>
       <tr>
         <td style="border: 1px solid #999; padding: 10px;">
-          Instructor-provided evidence
+          Evidence image built from the course GitHub repository
         </td>
         <td style="border: 1px solid #999; padding: 10px;">
-          Evidence source for the investigation
+          Approved evidence source for the investigation. You generate this yourself
+          in Part 4.
         </td>
       </tr>
     </tbody>
@@ -153,6 +157,159 @@
     </p>
   </aside>
 
+  <h2>Evidence Source and Network Connectivity</h2>
+
+  <p>
+    The evidence for this lab is not distributed to you as a finished download. You will
+    build it yourself in <strong>Part 4</strong> by running a Python generator script
+    published in the course GitHub repository. The script produces a 256 MB forensic disk
+    image and its SHA-256 hash.
+  </p>
+
+  <aside aria-label="Generator platform requirement" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+    <p>
+      <strong>The generator runs on Linux only.</strong> It uses <code>parted</code>,
+      <code>losetup</code>, <code>mkfs.ext4</code>, and loop mounting, and it must be run
+      with <code>sudo</code>. Run it inside an Ubuntu virtual machine. It will fail on
+      macOS, and you should not attempt to run it directly on your host operating system.
+    </p>
+  </aside>
+
+  <p>
+    Because the evidence must be generated on a Linux machine, and because this lab
+    requires you to acquire evidence from a source and transfer it to a separate analysis
+    workstation, you must decide <strong>how the evidence will reach your Ubuntu forensic
+    workstation</strong> before you begin Part 4.
+  </p>
+
+  <p>
+    Choose <strong>one</strong> of the three paths below and record your choice in your
+    investigation notes. Every path requires the same hashing and verification work; only
+    the transfer mechanism differs.
+  </p>
+
+  <h3>Path A: Two Virtual Machines Connected with Tailscale</h3>
+
+  <p>
+    Use two Ubuntu virtual machines. The first VM is the <strong>evidence host</strong>,
+    where you run the generator and store the master image. The second VM is your
+    <strong>forensic analysis workstation</strong>. You acquire the image on the evidence
+    host and transfer it across the network to the analysis workstation.
+  </p>
+
+  <p>
+    Virtual machines using NAT networking usually cannot reach each other directly, and
+    cloud VMs may sit behind firewalls that block inbound SSH. <strong>Tailscale</strong>
+    creates a private network between your machines so <code>scp</code> works regardless
+    of how they are hosted.
+  </p>
+
+  <p>Install Tailscale on <strong>both</strong> virtual machines:</p>
+
+  <pre><code>sudo apt update
+sudo apt install curl
+
+curl -fsSL https://tailscale.com/install.sh | sh
+
+sudo tailscale up</code></pre>
+
+  <p>
+    Follow the authentication URL printed by <code>tailscale up</code> and sign in.
+    <strong>Sign both machines in to the same Tailscale account</strong>, or they will not
+    be able to see each other.
+  </p>
+
+  <p>Confirm both machines are on the network:</p>
+
+  <pre><code>tailscale status
+
+tailscale ip -4</code></pre>
+
+  <p>
+    Record the Tailscale IP address (it will begin with <code>100.</code>) of your
+    analysis workstation. You will use it in Part 7.
+  </p>
+
+  <p>
+    Your analysis workstation must be running an SSH server to receive the file:
+  </p>
+
+  <pre><code>sudo apt install openssh-server
+
+sudo systemctl enable --now ssh</code></pre>
+
+  <p>From the evidence host, verify connectivity before you acquire anything:</p>
+
+  <pre><code>tailscale ping ANALYSIS_VM_TAILSCALE_IP
+
+ssh USER@ANALYSIS_VM_TAILSCALE_IP</code></pre>
+
+  <h3>Path B: Physical Evidence Drive (USB or External Hard Drive)</h3>
+
+  <p>
+    Write the generated image onto a USB drive or external hard drive, then treat that
+    physical device as the approved evidence source. You attach the device to your macOS
+    or Windows computer, image it there, and move the resulting image to your Ubuntu
+    workstation.
+  </p>
+
+  <p>
+    This path most closely matches real-world evidence handling and is the only path that
+    exercises the <code>diskutil</code> and <code>Get-Disk</code> device-identification
+    steps. It requires a spare drive you are willing to erase completely.
+  </p>
+
+  <h3>Path C: Single Machine (Evidence Stored Locally)</h3>
+
+  <p>
+    Generate the image and analyze it on the same Ubuntu virtual machine. No network
+    transfer and no external drive are required. You still create a separate working copy
+    of the image and verify its hash against the master, so the evidence-integrity
+    portion of the lab is unchanged.
+  </p>
+
+  <p>
+    This is the simplest path and is fully acceptable for this assignment.
+  </p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 1.5em 0;">
+    <caption style="text-align: left; font-weight: bold; margin-bottom: 0.5em;">
+      Evidence Path Comparison
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">Path</th>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">What You Need</th>
+        <th scope="col" style="border: 1px solid #999; padding: 10px; text-align: left;">How Evidence Is Transferred</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;">A</td>
+        <td style="border: 1px solid #999; padding: 10px;">Two Ubuntu VMs, Tailscale on both, SSH server on the analysis VM</td>
+        <td style="border: 1px solid #999; padding: 10px;"><code>scp</code> over the Tailscale network</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;">B</td>
+        <td style="border: 1px solid #999; padding: 10px;">One Ubuntu VM plus a USB or external drive you can erase</td>
+        <td style="border: 1px solid #999; padding: 10px;">Physical device attached to each machine in turn</td>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #999; padding: 10px;">C</td>
+        <td style="border: 1px solid #999; padding: 10px;">One Ubuntu VM only</td>
+        <td style="border: 1px solid #999; padding: 10px;">Local file copy on the same machine</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <aside aria-label="Verification requirement for all paths" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Important:</strong> The path you choose does not change your obligations.
+      In all three paths you must record the hash of the source, hash your acquired copy,
+      compare the two, and document every handling step in your chain of custody.
+    </p>
+  </aside>
+
   <h2>Important Safety and Evidence Rules</h2>
 
   <p>Follow these rules throughout the entire investigation.</p>
@@ -160,7 +317,8 @@
   <ol>
     <li>
       <strong>Do not image your personal computer.</strong>
-      You will work with an instructor-approved evidence source.
+      The only approved evidence source is the image you generate in Part 4. Never point
+      an acquisition command at your own system disk.
     </li>
     <li>
       <strong>Do not modify the original evidence.</strong>
@@ -287,11 +445,17 @@
   <p>Recommended minimum configuration:</p>
 
   <ul>
-    <li>4 CPU cores</li>
-    <li>8 GB RAM</li>
-    <li>100 GB available storage</li>
+    <li>2–4 CPU cores</li>
+    <li>4–8 GB RAM</li>
+    <li>40 GB available storage</li>
     <li>Ubuntu 22.04 LTS or Ubuntu 24.04 LTS</li>
   </ul>
+
+  <p>
+    The evidence image is only 256 MB. The storage recommendation covers the operating
+    system, your working copy, recovered files, and timeline output. If you are using a
+    cloud virtual machine, do not provision more storage than you need.
+  </p>
 
   <p>Create a dedicated forensic workspace:</p>
 
@@ -330,7 +494,16 @@ mkdir recovered</code></pre>
 
   <p>Install the required tools:</p>
 
-  <pre><code>sudo apt install sleuthkit dc3dd hashdeep exiftool testdisk p7zip-full file</code></pre>
+  <pre><code>sudo apt install sleuthkit dc3dd hashdeep libimage-exiftool-perl testdisk p7zip-full file git curl</code></pre>
+
+  <aside aria-label="Package name note" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Note:</strong> The ExifTool package is named
+      <code>libimage-exiftool-perl</code> on Ubuntu, but the command it installs is
+      <code>exiftool</code>. Installing <code>exiftool</code> by name fails on Ubuntu
+      22.04.
+    </p>
+  </aside>
 
   <p>Verify The Sleuth Kit installation:</p>
 
@@ -416,14 +589,151 @@ exiftool -ver</code></pre>
     </p>
   </aside>
 
-  <h2>Part 4: Identify the Approved Evidence Source</h2>
+  <h2>Part 4: Build the Approved Evidence Source</h2>
 
   <p>
-    Your instructor will provide an approved evidence source. This may be a dedicated
-    evidence disk, removable media, or another controlled source.
+    In this part you download the evidence generator from the course GitHub repository,
+    build your evidence image, and record the hash of that image. The image you build
+    here is your <strong>master evidence source</strong> for the rest of the
+    investigation.
   </p>
 
-  <h3>macOS</h3>
+  <h3>Step 1: Download the Evidence Generator from GitHub</h3>
+
+  <p>The generator is published in the course repository:</p>
+
+  <pre><code>https://github.com/hvaandres/CYBR2800-Forensics-Labs</code></pre>
+
+  <p>
+    Perform this step on the machine that will hold the evidence. For Path A this is your
+    evidence-host VM. For Paths B and C this is your Ubuntu VM.
+  </p>
+
+  <p>Clone the repository:</p>
+
+  <pre><code>sudo apt update
+sudo apt install git
+
+cd ~
+git clone https://github.com/hvaandres/CYBR2800-Forensics-Labs.git
+
+cd ~/CYBR2800-Forensics-Labs/hacking-thursdays/lab02</code></pre>
+
+  <p>
+    If you would rather not clone the entire repository, download only the generator:
+  </p>
+
+  <pre><code>mkdir -p ~/evidence-build
+cd ~/evidence-build
+
+curl -fLO https://raw.githubusercontent.com/hvaandres/CYBR2800-Forensics-Labs/main/hacking-thursdays/lab02/cybr2800_forensic_evidence.py</code></pre>
+
+  <p>Confirm the file downloaded:</p>
+
+  <pre><code>ls -l cybr2800_forensic_evidence.py</code></pre>
+
+  <aside aria-label="Academic integrity notice" style="border-left: 5px solid #b8860b; padding: 1em; margin: 1.5em 0; background-color: #fff8e1;">
+    <p>
+      <strong>Academic Integrity Notice:</strong> The generator contains the contents of
+      the evidence as readable text, including the names of the deleted files. Reading the
+      script to obtain your answers instead of recovering them with forensic tools defeats
+      the purpose of the lab and will not earn credit. Your report must show the tool
+      output that produced each finding. Run the script; do not study it.
+    </p>
+  </aside>
+
+  <h3>Step 2: Install the Generator's Dependencies</h3>
+
+  <pre><code>sudo apt update
+sudo apt install e2fsprogs coreutils parted util-linux</code></pre>
+
+  <h3>Step 3: Build the Evidence Image</h3>
+
+  <p>
+    The script writes its output to the current working directory, so change into the
+    directory where you want the evidence stored before running it. Keep this directory
+    separate from <code>~/forensics/</code>, which holds your analysis work.
+  </p>
+
+  <pre><code>mkdir -p ~/evidence-source
+cd ~/evidence-source
+
+sudo python3 ~/CYBR2800-Forensics-Labs/hacking-thursdays/lab02/cybr2800_forensic_evidence.py</code></pre>
+
+  <p>The script produces two files:</p>
+
+  <pre><code>CYBR2800_Lab1_Evidence.dd
+CYBR2800_Lab1_Evidence.dd.sha256</code></pre>
+
+  <p>Record the hash of your master image:</p>
+
+  <pre><code>cat CYBR2800_Lab1_Evidence.dd.sha256</code></pre>
+
+  <aside aria-label="Information about unique hashes" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Your hash is unique to your build.</strong> Each run of the generator
+      creates a new file-system UUID and new file timestamps, so your SHA-256 will not
+      match another student's, and it will not match if you rebuild the image later. This
+      is expected. The value that matters is the hash of <em>your</em> master image, which
+      you will use to prove that your acquired copy is identical to your source. Record it
+      in your investigation notes now, and do not rerun the generator after this point.
+    </p>
+  </aside>
+
+  <p>Protect the master image from accidental modification:</p>
+
+  <pre><code>chmod 444 CYBR2800_Lab1_Evidence.dd</code></pre>
+
+  <p>Record the following in your investigation notes:</p>
+
+  <ul>
+    <li>Full path to the master evidence image</li>
+    <li>Image size in bytes</li>
+    <li>SHA-256 hash of the master image</li>
+    <li>Date and time the image was built</li>
+    <li>The evidence path you selected (A, B, or C)</li>
+    <li>Your name</li>
+  </ul>
+
+  <h3>Step 4: Write the Evidence to a Physical Drive (Path B Only)</h3>
+
+  <p>
+    Skip this step if you selected Path A or Path C.
+  </p>
+
+  <p>Identify your target drive carefully:</p>
+
+  <pre><code>lsblk</code></pre>
+
+  <aside aria-label="Critical warning about writing to a device" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+    <p>
+      <strong>Critical Warning:</strong> The next command <strong>erases the entire target
+      device</strong>. Confirm the device name using its size in the <code>lsblk</code>
+      output. Do not guess, and do not select the disk your operating system is installed
+      on.
+    </p>
+  </aside>
+
+  <pre><code>sudo python3 cybr2800_forensic_evidence.py --write-to-device /dev/sdX</code></pre>
+
+  <p>
+    Replace <code>/dev/sdX</code> with your verified device. The script refuses to run
+    unless the target is a real block device with enough capacity, and it prompts you to
+    type <code>YES</code> before writing.
+  </p>
+
+  <p>
+    Shut down the VM or detach the drive, then connect it to your macOS or Windows
+    computer and continue with Step 5.
+  </p>
+
+  <h3>Step 5: Identify the Evidence Device (Path B Only)</h3>
+
+  <p>
+    Skip this step if you selected Path A or Path C, and continue to Part 5.
+  </p>
+
+  <h4>macOS</h4>
 
   <p>List available disks:</p>
 
@@ -439,7 +749,23 @@ exiftool -ver</code></pre>
     </p>
   </aside>
 
-  <h3>Windows</h3>
+  <aside aria-label="macOS unreadable disk warning" style="border-left: 5px solid #b22222; padding: 1em; margin: 1.5em 0; background-color: #fdf2f2;">
+    <p>
+      <strong>Expected macOS behavior:</strong> The evidence drive uses a Linux file
+      system that macOS cannot read, so macOS will display a dialog stating the disk is
+      not readable. Click <strong>Ignore</strong>. Do <strong>not</strong> click
+      <strong>Initialize</strong>, which opens Disk Utility and can destroy the evidence.
+    </p>
+  </aside>
+
+  <p>
+    Unmount the evidence drive before imaging it, so that macOS cannot write to it while
+    you work. Unmounting the volumes leaves the device itself readable:
+  </p>
+
+  <pre><code>diskutil unmountDisk /dev/diskN</code></pre>
+
+  <h4>Windows</h4>
 
   <p>
     Open <strong>PowerShell as Administrator</strong> and list available disks:
@@ -466,8 +792,8 @@ exiftool -ver</code></pre>
   </aside>
 
   <p>
-    Carefully identify the evidence device using the information provided by your
-    instructor, regardless of which operating system you are using.
+    Carefully identify the evidence device by matching its size to the image you wrote in
+    Step 4, regardless of which operating system you are using.
   </p>
 
   <p>
@@ -485,18 +811,49 @@ exiftool -ver</code></pre>
   <h2>Part 5: Acquire the Evidence</h2>
 
   <p>
-    Follow the acquisition procedure provided by your instructor for the evidence source
-    used in this course.
-  </p>
-
-  <p>
-    The objective is to create a forensic image without modifying the original evidence.
-    An example output file might be:
+    The objective is to create a forensic working copy without modifying the original
+    evidence. You will analyze the copy, never the master. The example output filename
+    used throughout the remainder of this lab is:
   </p>
 
   <pre><code>suspect.dd</code></pre>
 
-  <h3>macOS</h3>
+  <p>
+    Follow the subsection that matches the evidence path you selected.
+  </p>
+
+  <h3>Path A and Path C: Acquire on Linux with dc3dd</h3>
+
+  <p>
+    Your master image is a file on a Linux machine, so acquire your working copy with
+    <code>dc3dd</code>. It hashes the data as it copies and writes its own acquisition
+    log, which is exactly what a forensic acquisition tool is expected to do.
+  </p>
+
+  <pre><code>cd ~/evidence-source
+
+dc3dd if=CYBR2800_Lab1_Evidence.dd of=suspect.dd hash=sha256 log=acquisition.log</code></pre>
+
+  <p>Review the log that <code>dc3dd</code> produced:</p>
+
+  <pre><code>cat acquisition.log</code></pre>
+
+  <p>
+    The log records the input file, the output file, the number of sectors copied, and the
+    SHA-256 hash of the data. Confirm that the hash in the log matches the hash in
+    <code>CYBR2800_Lab1_Evidence.dd.sha256</code> that you recorded in Part 4.
+  </p>
+
+  <aside aria-label="Note about acquisition hash comparison" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Why this matters:</strong> This comparison is the acquisition proof. It
+      demonstrates that the working copy you are about to analyze contains exactly the
+      same data as the source, and that your acquisition did not alter anything. If the
+      two hashes differ, stop and repeat the acquisition before continuing.
+    </p>
+  </aside>
+
+  <h3>Path B: macOS</h3>
 
   <p>
     <code>dc3dd</code> is a Linux tool and is not available on macOS. Acquire the image
@@ -511,7 +868,7 @@ exiftool -ver</code></pre>
     (use the raw device, e.g. <code>/dev/rdisk4</code>, for faster imaging).
   </p>
 
-  <h3>Windows</h3>
+  <h3>Path B: Windows</h3>
 
   <p>
     Windows does not include a built-in disk-imaging command. Use one of the following
@@ -550,18 +907,42 @@ exiftool -ver</code></pre>
   <h2>Part 6: Calculate the Evidence Hash</h2>
 
   <p>
-    Calculate the SHA-256 hash of the forensic image.
+    Calculate the SHA-256 hash of the forensic image you acquired.
   </p>
 
-  <h3>macOS</h3>
+  <h3>Path A and Path C: Linux</h3>
+
+  <pre><code>cd ~/evidence-source
+
+sha256sum suspect.dd</code></pre>
+
+  <p>Compare it directly against the hash of the master image:</p>
+
+  <pre><code>sha256sum suspect.dd CYBR2800_Lab1_Evidence.dd</code></pre>
+
+  <p>
+    The two hash values printed must be identical. Save the acquisition hash:
+  </p>
+
+  <pre><code>mkdir -p ~/forensics/hashes
+
+sha256sum suspect.dd &gt; ~/forensics/hashes/evidence_sha256.txt</code></pre>
+
+  <h3>Path B: macOS</h3>
 
   <pre><code>shasum -a 256 suspect.dd</code></pre>
 
-  <p>Save the hash:</p>
+  <p>
+    Create a directory for your hashes on the Mac, then save the hash. The
+    <code>~/forensics/</code> tree you created in Part 1 exists on your Ubuntu VM, not on
+    your Mac, so you must create a local directory first:
+  </p>
 
-  <pre><code>shasum -a 256 suspect.dd &gt; ~/forensics/hashes/evidence_sha256.txt</code></pre>
+  <pre><code>mkdir -p ~/forensics/hashes
 
-  <h3>Windows</h3>
+shasum -a 256 suspect.dd &gt; ~/forensics/hashes/evidence_sha256.txt</code></pre>
+
+  <h3>Path B: Windows</h3>
 
   <p>Using PowerShell:</p>
 
@@ -569,7 +950,15 @@ exiftool -ver</code></pre>
 
   <p>Save the hash to a file:</p>
 
-  <pre><code>Get-FileHash suspect.dd -Algorithm SHA256 | Out-File evidence_sha256.txt</code></pre>
+  <pre><code>Get-FileHash suspect.dd -Algorithm SHA256 | Out-File -Encoding utf8 evidence_sha256.txt</code></pre>
+
+  <aside aria-label="PowerShell encoding note" style="border-left: 5px solid #555; padding: 1em; margin: 1.5em 0; background-color: #f5f5f5;">
+    <p>
+      <strong>Note:</strong> The <code>-Encoding utf8</code> option matters. Without it,
+      Windows PowerShell writes the file in UTF-16, which appears corrupted when you open
+      it on Ubuntu later.
+    </p>
+  </aside>
 
   <p>
     If you used FTK Imager, you may instead use the hash value from its generated
@@ -582,32 +971,84 @@ exiftool -ver</code></pre>
 
   <pre><code>cat ~/forensics/hashes/evidence_sha256.txt</code></pre>
 
-  <h2>Part 7: Transfer the Evidence to Ubuntu</h2>
+  <h2>Part 7: Transfer the Evidence to Your Analysis Workstation</h2>
 
   <p>
-    Transfer the forensic image and acquisition documentation to your Ubuntu forensic
-    workstation. Both macOS and Windows 10/11 include a built-in <code>scp</code>
-    command you can run from Terminal (macOS) or PowerShell (Windows):
-  </p>
-
-  <pre><code>scp suspect.dd USER@UBUNTU_HOST:~/forensics/evidence/
-scp acquisition.log USER@UBUNTU_HOST:~/forensics/logs/</code></pre>
-
-  <p>
-    Windows users may alternatively use a GUI tool such as WinSCP to transfer the files.
+    Move the forensic image and your acquisition documentation onto the Ubuntu forensic
+    workstation. The forensic image belongs in <code>~/forensics/evidence/</code> and the
+    acquisition documentation belongs in <code>~/forensics/logs/</code>.
   </p>
 
   <p>
-    Place the forensic image in:
+    Follow the subsection that matches the evidence path you selected.
   </p>
 
-  <pre><code>~/forensics/evidence/</code></pre>
+  <h3>Path A: Transfer over Tailscale</h3>
 
   <p>
-    Place acquisition documentation in:
+    Confirm your analysis workstation is reachable before transferring. From the evidence
+    host:
   </p>
 
-  <pre><code>~/forensics/logs/</code></pre>
+  <pre><code>tailscale status</code></pre>
+
+  <p>
+    Copy the image and log using the Tailscale IP address or the Tailscale machine name of
+    your analysis workstation:
+  </p>
+
+  <pre><code>scp suspect.dd USER@ANALYSIS_VM_TAILSCALE_IP:~/forensics/evidence/
+scp acquisition.log USER@ANALYSIS_VM_TAILSCALE_IP:~/forensics/logs/</code></pre>
+
+  <aside aria-label="Troubleshooting network transfer" style="border-left: 5px solid #b8860b; padding: 1em; margin: 1.5em 0; background-color: #fff8e1;">
+    <p>
+      <strong>If <code>scp</code> hangs or reports "Connection refused":</strong> the two
+      machines are not connected. Verify that both appear in <code>tailscale status</code>
+      and are signed in to the same account, that the analysis workstation is running
+      <code>ssh</code> (<code>sudo systemctl status ssh</code>), and that you used the
+      Tailscale address rather than a local <code>192.168.x.x</code> address. Document
+      this troubleshooting in your notes if it occurs.
+    </p>
+  </aside>
+
+  <h3>Path B: Transfer with a Physical Drive</h3>
+
+  <p>
+    Copy <code>suspect.dd</code> and your acquisition log onto a separate USB drive from
+    the one holding the evidence, then attach that drive to your Ubuntu VM. Do not write
+    your working copy back onto the evidence drive.
+  </p>
+
+  <p>
+    On Ubuntu, identify and mount the transfer drive, then copy the files into place:
+  </p>
+
+  <pre><code>lsblk
+
+cp /media/$USER/YOUR_DRIVE/suspect.dd ~/forensics/evidence/
+cp /media/$USER/YOUR_DRIVE/acquisition.log ~/forensics/logs/</code></pre>
+
+  <p>
+    Windows users may alternatively use a GUI tool such as WinSCP, or a shared folder
+    configured in their virtualization software, instead of a second drive.
+  </p>
+
+  <h3>Path C: Local Copy</h3>
+
+  <p>
+    No network transfer is required. Copy the working image and acquisition log into your
+    forensic workspace on the same machine:
+  </p>
+
+  <pre><code>cp ~/evidence-source/suspect.dd ~/forensics/evidence/
+cp ~/evidence-source/acquisition.log ~/forensics/logs/</code></pre>
+
+  <p>
+    Leave <code>CYBR2800_Lab1_Evidence.dd</code> in <code>~/evidence-source/</code>. That
+    file is your master evidence and must remain untouched.
+  </p>
+
+  <h3>Verify the Transfer</h3>
 
   <p>
     After transferring the evidence, calculate its SHA-256 hash again:
@@ -642,12 +1083,17 @@ sha256sum suspect.dd</code></pre>
     </thead>
     <tbody>
       <tr>
-        <td style="border:1px solid #999; padding:10px;">macOS or Windows / Acquisition</td>
+        <td style="border:1px solid #999; padding:10px;">Master image / Generator output (Part 4)</td>
+        <td style="border:1px solid #999; padding:10px;">Your hash</td>
+        <td style="border:1px solid #999; padding:10px;">Baseline</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #999; padding:10px;">Working copy / Acquisition (Part 5)</td>
         <td style="border:1px solid #999; padding:10px;">Your hash</td>
         <td style="border:1px solid #999; padding:10px;">Yes / No</td>
       </tr>
       <tr>
-        <td style="border:1px solid #999; padding:10px;">Ubuntu</td>
+        <td style="border:1px solid #999; padding:10px;">Analysis workstation / After transfer (Part 7)</td>
         <td style="border:1px solid #999; padding:10px;">Your hash</td>
         <td style="border:1px solid #999; padding:10px;">Yes / No</td>
       </tr>
