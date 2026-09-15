@@ -94,6 +94,14 @@ fls -r -o 2048 CYBR2800_Lab2_Evidence.dd
 
 You should see the full populated tree. Substitute your actual offset.
 
+As of the "second device discovered" revision, Lab 2's tree is much larger than before
+(~230 files, up from ~15): the original `home/alex/` data, a noise account at
+`home/jordan/`, and a recovered backup drive at `mnt/recovered_backup/` containing
+`backupadmin`'s home directory plus ~200 daily backup job logs under `archives/`. Confirm
+all three top-level areas (`home/`, `mnt/`, `var/`) appear in the `fls -r` output — a
+missing `mnt/recovered_backup` branch means the copy step in `create_image()` didn't pick
+up that directory.
+
 ### 3.3 Deleted-file recovery actually returns data — CRITICAL
 
 This is the check that matters most, and the one most likely to fail.
@@ -125,6 +133,14 @@ Three ways to resolve it, in order of effort:
 3. **Do both** — ext2 for the guaranteed recovery win, carving as a stretch/bonus section.
 
 Whichever you choose, re-run this check after changing the generator.
+
+There are now **5 deleted files across 2 locations** (up from 3 in one location):
+`home/alex/Downloads/{temporary_credentials.txt,backup_notes.txt,suspicious_commands.txt}`
+and `mnt/recovered_backup/home/backupadmin/Documents/credentials_rotation.txt` plus
+`mnt/recovered_backup/archives/backup_log_2026-08-19.txt`. Run the §3.3 `icat | wc -c`
+check against at least one deleted file from **each** location — the ext4 zeroing behavior
+is identical either way, but this also confirms the backup-drive branch survived the copy
+and delete steps intact.
 
 ### 3.4 `tsk_recover` scope
 
@@ -258,10 +274,15 @@ Record at minimum:
 
 - The `mmls` partition start sector for this build
 - The SHA-256 of the master
-- The inode number of each deleted file, and the expected `fls -r -d` output
+- The inode number of each of the **5** deleted files (3 under `home/alex/Downloads/`, 2
+  under `mnt/recovered_backup/`), and the expected `fls -r -d` output for each
 - The expected `icat` byte count per deleted file (your §3.3 result)
 - The five-plus evidence items you will accept for the evidence table
 - The indicator set (IPs, accounts, script names) with the file each one appears in
+- Which daily backup log under `mnt/recovered_backup/archives/` carries the "outside the
+  maintenance window" anomaly (2026-08-20) and which carries the failed-job anomaly
+  (2026-08-19, later deleted) — these are the two backup-drive findings students should
+  surface without being told the exact filenames
 
 The generated `CYBR2800_*_manifest.txt` covers part of this and is a reasonable starting
 point — but it has no inode numbers, no offset, and no grading thresholds, so it is not
