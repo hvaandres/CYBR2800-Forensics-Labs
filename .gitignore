@@ -46,3 +46,16 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# ---------------------------------------------------------------
+# Auditbeat lab runtime state
+#
+# data/ holds Auditbeat's own registry (beat.db, meta.json, the
+# lock file). It is per-machine runtime state and regenerates on
+# every start. evidence/ is where students drop sample artifacts
+# during the lab, so its contents are per-student, but the empty
+# directory itself must exist for the bind mount to work.
+# ---------------------------------------------------------------
+docker/auditbeat/data/
+docker/auditbeat/evidence/*
+!docker/auditbeat/evidence/.gitkeep

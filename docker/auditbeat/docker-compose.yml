@@ -1,0 +1,24 @@
+services:
+  auditbeat:
+    image: docker.elastic.co/beats/auditbeat:8.19.21
+    read_only: true
+    command: ["auditbeat", "-e", "--strict.perms=false"]
+    volumes:
+      - type: bind
+        source: ./auditbeat.yml
+        target: /usr/share/auditbeat/auditbeat.yml
+        read_only: true
+      # Auditbeat's own registry (beat.db). Never monitor this path.
+      - type: bind
+        source: ./data
+        target: /usr/share/auditbeat/data
+      # Directory students drop evidence files into; watched by file_integrity.
+      - type: bind
+        source: ./evidence
+        target: /evidence
+    # Console output is verbose; cap it so it cannot fill the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
