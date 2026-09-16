@@ -59,3 +59,8 @@ Thumbs.db
 docker/auditbeat/data/
 docker/auditbeat/evidence/*
 !docker/auditbeat/evidence/.gitkeep
+
+# Elasticsearch's own index data (from docker-compose.elastic.yml). Regenerates
+# on every stack start; must not be committed.
+docker/auditbeat/esdata/*
+!docker/auditbeat/esdata/.gitkeep
