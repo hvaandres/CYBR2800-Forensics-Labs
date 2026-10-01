@@ -19,6 +19,8 @@ confuses students who see both.
 - `hacking-thursdays/lab02/` → handout **"Lab 1 of 3"** → builds `CYBR2800_Lab1_Evidence.dd`
 - `hacking-thursdays/lab03/` → handout **"Lab 2 of 3"** → builds `CYBR2800_Lab2_Evidence.dd`
 - `hacking-thursdays/lab04/` → handout **"Lab 3 of 3"** → builds `CYBR2800_Lab3_Evidence.dd`
+  (build, validate, and publish via `lab04/dist/BUILD_AND_DISTRIBUTE.md`; the automated
+  checks are `lab04/dist/validate_lab4_image.sh`)
 
 Everything students touch (handout title, evidence filename, working directory) uses the
 **sequence** number consistently. The week number never appears in student-facing material.
@@ -121,16 +123,41 @@ they have found something — but the pointers to the data blocks are gone, so `
 reports size 0 with no blocks and `icat` returns nothing. This is normal ext4 behavior, not
 a bug in the script.
 
+> **Correction — formatting the partition ext2 does NOT fix this.** An earlier revision of
+> this guide said ext2 "does not zero block pointers on unlink." That is wrong for current
+> Linux kernels. This was tested on Ubuntu 24.04: a file deleted through a *mounted* ext2
+> filesystem ends up with `st_size = 0`, cleared block pointers, and mtime/ctime overwritten
+> with the current time. `fls -r -d` lists the name and `icat` returns 0 bytes, exactly as on
+> ext4. The filesystem type is not what matters. **How the file is deleted is.**
+>
+> **The method that works** is to unmount the image and delete with `debugfs`:
+>
+> ```bash
+> debugfs -w -R "rm /home/alex/Downloads/temporary_credentials.txt" /dev/loopXp1
+> ```
+>
+> `debugfs rm` frees the inode and its blocks and records a dtime, but leaves the size,
+> block pointers, and the mtime you set intact. That is what a genuinely deleted,
+> not-yet-overwritten file looks like to The Sleuth Kit. The Lab 3 generator
+> (`lab04/cybr2800_forensic_evidence_lab4.py`, `delete_evidence_offline()`) does this, and
+> it was validated end to end: all 11 deleted files list under `fls -r -d` and `icat`
+> returns real bytes for each, including multi-block `.xlsx` and `.tar.gz` files and a
+> deleted directory. `debugfs` also works on ext4.
+>
+> **Check your Lab 1 and Lab 2 images.** If their generators delete files with a plain
+> `unlink()` on a mounted filesystem, their recovery sections have this same problem
+> regardless of the filesystem they use.
+
 Three ways to resolve it, in order of effort:
 
-1. **Format the partition ext2 instead of ext4.** Change `mkfs.ext4` to `mkfs.ext2` in the
-   generator. ext2 does not zero block pointers on unlink, so `icat` recovery works cleanly.
-   This is the classic teaching filesystem and the lowest-effort fix. Update the handout and
-   manifest, which currently say ext4.
+1. **Delete the files offline with `debugfs`** after unmounting, as the Lab 3 generator now
+   does (see the correction above). Small change, works on ext2 and ext4, and also keeps your
+   scenario mtimes intact. (The older suggestion here — switching `mkfs.ext4` to `mkfs.ext2`
+   — does not work on its own.)
 2. **Keep ext4 and rewrite Parts 8–10 as a carving exercise** using `blkls` to extract
    unallocated space, then `strings` / `foremost` / `photorec` against it. More realistic and
    more instructive, but a larger handout rewrite and harder for a first-time student.
-3. **Do both** — ext2 for the guaranteed recovery win, carving as a stretch/bonus section.
+3. **Do both** — `debugfs` deletion for the guaranteed recovery win, carving as a stretch/bonus section (the Lab 3 handout does exactly this).
 
 Whichever you choose, re-run this check after changing the generator.
 
@@ -161,6 +188,19 @@ explicitly a timeline lab built on these timestamps.
 Fix by adding a `touch -d` pass over the mounted tree before unmount, so filesystem
 metadata matches the narrative in the logs. Until then, warn students that filesystem
 timestamps reflect image creation, not the scenario.
+
+> **Lab 3 already fixes this too.** Its generator runs an `os.utime()` pass over the
+> populated tree before unmount (`apply_timestamps()`), so atime and mtime match the
+> scenario dates and `mactime` output is usable. Because it then deletes files offline with
+> `debugfs` (see §3.3), the scenario mtime of each deleted file survives deletion too —
+> deleting through the mount would have overwritten it with the build clock.
+>
+> ctime and the deletion time (dtime) are not settable from userspace and still show build
+> time; ext2 records no creation time at all. That is left
+> deliberately visible: the Lab 3 handout asks students to notice the discrepancy and
+> disclose it as a limitation, and it uses the same mtime-versus-ctime reasoning to catch a
+> file that was genuinely timestomped in the scenario
+> (`home/alex/.local/bin/tobor_sync.sh`, mtime 2025-01-05).
 
 ---
 
@@ -283,6 +323,17 @@ Record at minimum:
   maintenance window" anomaly (2026-08-20) and which carries the failed-job anomaly
   (2026-08-19, later deleted) — these are the two backup-drive findings students should
   surface without being told the exact filenames
+
+**Lab 3 (`lab04/`) has a longer checklist.** Record the partition start sector (`2048`); the
+master's SHA-256; the inode of each of the **11** deleted files plus the deleted
+`.cache_sync` directory; the manifest's row counts and dollar totals per file and in total
+(17,830 rows); the incident-day transfer volume (346 files, 1,000,452,077 bytes); the
+attribution evidence (`dhcpd.log`, `known_hosts`, `etc/hosts`, MAC `b4:2e:99:0c:17:aa`); the
+traps (800-byte USB drive, `priya` as the legitimate control, the timestomped
+`tobor_sync.sh`, the unidentified "Kestrel"); and the two phantom `^` slack entries (inode
+2049) that are not deleted files. `lab04/dist/validate_lab4_image.sh` prints most of these.
+Full marks are available for correctly marking a finding Unsupported — the handout requires
+at least one.
 
 The generated `CYBR2800_*_manifest.txt` covers part of this and is a reasonable starting
 point — but it has no inode numbers, no offset, and no grading thresholds, so it is not

@@ -64,3 +64,7 @@ docker/auditbeat/evidence/*
 # on every stack start; must not be committed.
 docker/auditbeat/esdata/*
 !docker/auditbeat/esdata/.gitkeep
+
+# Lab 4 instructor kit (contains the generator and answer set)
+*_instructor_kit.tar.gz
+*_instructor_kit.tar.gz.sha256
